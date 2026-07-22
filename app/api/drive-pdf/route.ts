@@ -19,7 +19,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const CACHE_DIR = path.join(process.cwd(), ".pdf-cache");
+/** Netlify/Lambda only allow writes under /tmp; local uses project .pdf-cache */
+const CACHE_DIR = path.join(
+  process.env.NETLIFY === "true" || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? "/tmp"
+    : process.cwd(),
+  ".pdf-cache"
+);
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
