@@ -15,25 +15,15 @@ import {
   getDriveThumbnailUrl,
   isAutoDriveThumbnail,
 } from "@/lib/drive";
+import { cn } from "@/lib/utils";
+import { rememberCatalogScroll } from "@/lib/scroll-restore";
+import { prefetchCatalogPdf } from "@/lib/pdf-prefetch";
 
 type CatalogCardProps = {
   catalog: Catalog;
   index?: number;
-  /** Tighter layout so home can preview 2 cards under the hero */
   compact?: boolean;
 };
-
-function rememberScroll(pathname: string) {
-  try {
-    sessionStorage.setItem(
-      `scroll:${pathname}`,
-      String(Math.round(window.scrollY))
-    );
-    sessionStorage.setItem("scroll:return", pathname);
-  } catch {
-    // ignore
-  }
-}
 
 function buildDriveCandidates(fileId: string, preferred?: string | null) {
   const list = [
@@ -60,9 +50,7 @@ export function CatalogCard({
   );
   const fileId = extractDriveFileId(catalog.drive_file_id);
   const isDriveAuto = isAutoDriveThumbnail(catalog.thumbnail_url);
-  const isLocalThumb = Boolean(
-    catalog.thumbnail_url?.startsWith("/")
-  );
+  const isLocalThumb = Boolean(catalog.thumbnail_url?.startsWith("/"));
 
   const candidates = useMemo(() => {
     if (isLocalThumb || !isDriveAuto) {
@@ -73,6 +61,7 @@ export function CatalogCard({
 
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [thumbFailed, setThumbFailed] = useState(candidates.length === 0);
+  const [selected, setSelected] = useState(false);
 
   useEffect(() => {
     setCandidateIndex(0);
@@ -92,14 +81,25 @@ export function CatalogCard({
     });
   }
 
+  function handleSelect() {
+    setSelected(true);
+    rememberCatalogScroll(pathname || "/catalogs", catalog.id);
+    // Warm cache in background only if missing — do not compete with open
+    if (fileId) prefetchCatalogPdf(fileId);
+  }
+
   return (
     <FadeUp delay={index * 0.05} className="h-full">
-      <Card className="h-full">
+      <Card className={cn("h-full", selected && "catalog-card--selected")}>
         <Link
           href={`/catalogs/${catalog.id}`}
-          className="flex h-full flex-col group"
+          data-catalog-id={catalog.id}
+          className={cn(
+            "catalog-card-link flex h-full flex-col group",
+            selected && "is-selected"
+          )}
           scroll={false}
-          onClick={() => rememberScroll(pathname || "/catalogs")}
+          onClick={handleSelect}
         >
           <div
             className={`catalog-preview-frame relative shrink-0 bg-background overflow-hidden ${
@@ -109,7 +109,6 @@ export function CatalogCard({
             {thumbSrc ? (
               <>
                 {isDriveAuto ? (
-                  // Native img + no-referrer: Drive often blocks localhost Referer on desktop
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     key={thumbSrc}
@@ -145,6 +144,12 @@ export function CatalogCard({
                 <ImageIcon className="h-12 w-12 text-text-secondary/40" />
               </div>
             )}
+
+            {selected && (
+              <div className="catalog-selected-overlay" aria-live="polite">
+                <span className="catalog-selected-badge">Opening…</span>
+              </div>
+            )}
           </div>
           <div
             className={`flex flex-1 flex-col ${
@@ -163,11 +168,11 @@ export function CatalogCard({
               {catalog.title}
             </h3>
             <span
-              className={`catalog-view-btn mt-auto ${
+              className={`catalog-view-btn gold-btn mt-auto ${
                 compact ? "catalog-view-btn--compact" : ""
-              }`}
+              } ${selected ? "catalog-view-btn--selected" : ""}`}
             >
-              View Designs
+              {selected ? "Selected" : "View Designs"}
             </span>
           </div>
         </Link>

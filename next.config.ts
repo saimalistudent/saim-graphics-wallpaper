@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.100.155", "127.0.0.1", "localhost"],
+  allowedDevOrigins: [
+    "192.168.100.100",
+    "192.168.100.155",
+    "127.0.0.1",
+    "localhost",
+  ],
+  transpilePackages: ["pdfjs-dist"],
   images: {
     localPatterns: [
       { pathname: "/logo.png" },

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Images } from "lucide-react";
 import { FadeUp } from "@/components/FadeUp";
-import { BRAND_NAME, BRAND_SUBTITLE, BRAND_TAGLINE } from "@/styles/tokens";
+import { BRAND_NAME, BRAND_SUBTITLE } from "@/styles/tokens";
 
 export function Hero() {
   return (
@@ -9,44 +10,53 @@ export function Hero() {
       <div className="hero-bg" aria-hidden>
         <span className="hero-base" />
         <span className="hero-spotlight" />
-        <span className="hero-gold-accent" />
         <span className="hero-vignette" />
         <span className="hero-grain" />
       </div>
-      <div className="relative mx-auto max-w-7xl px-4 pt-4 pb-10 sm:px-6 sm:pt-6 sm:pb-14 lg:px-8 lg:pt-7 lg:pb-16">
-        <FadeUp>
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+
+      <div className="hero-inner relative mx-auto max-w-xl px-4 pt-4 pb-5 sm:px-6 sm:pt-5 sm:pb-6">
+        <FadeUp className="flex flex-col items-center text-center">
+          <div className="hero-logo-wrap">
             <Image
               src="/logo.png"
               alt="SAIM Graphics logo"
-              width={140}
-              height={140}
+              width={112}
+              height={112}
               className="hero-logo-pop object-contain"
               priority
             />
-            <div className="text-center sm:text-left">
-              <p className="text-white text-sm font-medium tracking-widest uppercase mb-2">
-                Designing · Printing · Pasting
-              </p>
-              <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black tracking-tight uppercase leading-[0.95]">
-                <span className="hero-brand-title">{BRAND_NAME}</span>
-              </h1>
-              <p className="mt-1.5 text-[10px] sm:text-xs tracking-[0.14em] uppercase text-white/85 font-medium">
-                {BRAND_SUBTITLE} · GUJRANWALA PAKISTAN
-              </p>
-              <p className="hero-glass-card mt-3 max-w-xl px-4 py-3 text-xs sm:text-sm leading-relaxed tracking-wide text-white/95">
-                {BRAND_TAGLINE}
-              </p>
-              <div className="mt-6">
-                <Link href="/catalogs" className="golden-button text-sm sm:text-base">
-                  View Wallpaper Designs
-                </Link>
-              </div>
-              <p className="hero-urdu-main mt-3 sm:mt-4">
-                Transforming walls into timeless stories of elegance
-              </p>
-            </div>
           </div>
+
+          <p className="hero-services">
+            Designing<span className="hero-dot">•</span>
+            Printing<span className="hero-dot">•</span>
+            Pasting
+          </p>
+
+          <div className="hero-rule" aria-hidden>
+            <span className="hero-rule-line" />
+            <span className="hero-rule-flare" />
+            <span className="hero-rule-line" />
+          </div>
+
+          <h1 className="hero-brand-title font-heading font-bold tracking-wide">
+            {BRAND_NAME}
+          </h1>
+
+          <p className="hero-location">
+            {BRAND_SUBTITLE} — Gujranwala Pakistan
+          </p>
+
+          <Link href="/catalogs" className="hero-cta gold-btn">
+            <span className="hero-cta-icon" aria-hidden>
+              <Images className="h-3.5 w-3.5" strokeWidth={2.25} />
+            </span>
+            <span>View Wallpaper Designs</span>
+          </Link>
+
+          <p className="hero-motto">
+            Transforming walls into timeless stories of elegance
+          </p>
         </FadeUp>
       </div>
     </section>

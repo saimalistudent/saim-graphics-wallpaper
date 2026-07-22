@@ -1,34 +1,50 @@
 "use client";
 
 import { useEffect } from "react";
+import { restoreCatalogListScroll } from "@/lib/scroll-restore";
 
 /**
- * Remembers page scroll and restores it when the user returns (e.g. PDF → Back).
+ * Restores catalog/home list scroll when user returns from a PDF (Back).
+ * Waits for async grid cards so position is not lost.
  */
 export function ScrollRestore({ storageKey }: { storageKey: string }) {
   useEffect(() => {
-    const key = `scroll:${storageKey}`;
+    const scrollKey = `scroll:${storageKey}`;
+    let cancelled = false;
+    let observer: MutationObserver | null = null;
+    const timers: number[] = [];
 
-    const restore = () => {
-      const raw = sessionStorage.getItem(key);
-      if (raw == null) return;
-      const y = Number(raw);
-      if (!Number.isFinite(y) || y <= 0) return;
-      window.scrollTo({ top: y, left: 0, behavior: "instant" as ScrollBehavior });
+    const stopWatching = () => {
+      observer?.disconnect();
+      observer = null;
     };
 
-    // Restore after layout (catalogs grid / images)
-    restore();
-    const t1 = window.setTimeout(restore, 50);
-    const t2 = window.setTimeout(restore, 200);
-    const t3 = window.setTimeout(restore, 500);
+    const attempt = () => {
+      if (cancelled) return;
+      if (restoreCatalogListScroll(storageKey)) {
+        stopWatching();
+      }
+    };
+
+    attempt();
+
+    for (const ms of [50, 120, 250, 450, 700, 1000, 1500, 2200, 3200]) {
+      timers.push(window.setTimeout(attempt, ms));
+    }
+
+    observer = new MutationObserver(() => attempt());
+    observer.observe(document.body, { childList: true, subtree: true });
 
     let ticking = false;
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
       window.requestAnimationFrame(() => {
-        sessionStorage.setItem(key, String(Math.round(window.scrollY)));
+        try {
+          sessionStorage.setItem(scrollKey, String(Math.round(window.scrollY)));
+        } catch {
+          // ignore
+        }
         ticking = false;
       });
     };
@@ -37,12 +53,16 @@ export function ScrollRestore({ storageKey }: { storageKey: string }) {
     window.addEventListener("pagehide", onScroll);
 
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.clearTimeout(t3);
+      cancelled = true;
+      stopWatching();
+      for (const t of timers) window.clearTimeout(t);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", onScroll);
-      sessionStorage.setItem(key, String(Math.round(window.scrollY)));
+      try {
+        sessionStorage.setItem(scrollKey, String(Math.round(window.scrollY)));
+      } catch {
+        // ignore
+      }
     };
   }, [storageKey]);
 

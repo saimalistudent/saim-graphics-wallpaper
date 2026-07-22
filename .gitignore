@@ -32,6 +32,9 @@ yarn-error.log*
 .env*
 !.env.local.example
 
+# pdf proxy cache
+.pdf-cache/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
