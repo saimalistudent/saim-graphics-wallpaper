@@ -48,6 +48,14 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const LARGE_PDF_BYTES = 12 * 1024 * 1024;
 const SMALL_PDF_MAX = 12 * 1024 * 1024;
+const MIN_PDF_LOADER_MS = 480;
+
+/** Short, pleasant lines — keep the wait calm without feeling stuck */
+const PDF_LOAD_STAGES = [
+  "Opening designs",
+  "Almost ready",
+  "Just a moment",
+] as const;
 
 /** Same-session reopen without touching IndexedDB */
 const memoryPdfCache = new Map<string, ArrayBuffer>();
@@ -354,7 +362,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadHint, setLoadHint] = useState("Please wait...");
+  const [loadStage, setLoadStage] = useState(0);
   const [loadProgress, setLoadProgress] = useState(0);
   const [visibleUntil, setVisibleUntil] = useState(2);
   const [largePdf, setLargePdf] = useState(false);
@@ -367,7 +375,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
     : null;
   const downloadUrl = getDriveDownloadUrl(catalog.drive_file_id);
   const pdfApiUrl = useMemo(
-    () => `/api/drive-pdf?id=${encodeURIComponent(catalog.drive_file_id)}`,
+    () => `/api/drive-pdf/${encodeURIComponent(catalog.drive_file_id)}`,
     [catalog.drive_file_id]
   );
 
@@ -573,38 +581,48 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
     let loadingTask: any = null;
     let hintTimer: number | null = null;
     let tickTimer: number | null = null;
+    const openedAt = Date.now();
 
     function finishOpen(opened: PDFDocumentProxy, isLarge: boolean) {
-      if (hintTimer) window.clearTimeout(hintTimer);
+      if (hintTimer) window.clearInterval(hintTimer);
       if (tickTimer) window.clearInterval(tickTimer);
       setLoadProgress(100);
-      setPdf(opened);
-      setNumPages(opened.numPages);
-      setLargePdf(isLarge);
-      // Few pages first = first paint sooner on heavy catalogs
-      setVisibleUntil(Math.min(opened.numPages, isLarge ? 3 : 4));
-      scaleRef.current = 1;
-      offsetRef.current = { x: 0, y: 0 };
-      savedScrollTopRef.current = 0;
-      setScale(1);
-      setOffset({ x: 0, y: 0 });
-      setGestureLock(false);
-      unlockScroller();
-      scheduleQuality(1, isLarge);
-      setLoading(false);
-      setLoadHint("Please wait...");
-      window.setTimeout(() => {
+      setLoadStage(PDF_LOAD_STAGES.length - 1);
+
+      const reveal = () => {
         if (cancelled) return;
-        setVisibleUntil((v) =>
-          Math.min(opened.numPages, Math.max(v, isLarge ? 6 : 8))
-        );
-      }, 500);
+        setPdf(opened);
+        setNumPages(opened.numPages);
+        setLargePdf(isLarge);
+        // Few pages first = first paint sooner on heavy catalogs
+        setVisibleUntil(Math.min(opened.numPages, isLarge ? 3 : 4));
+        scaleRef.current = 1;
+        offsetRef.current = { x: 0, y: 0 };
+        savedScrollTopRef.current = 0;
+        setScale(1);
+        setOffset({ x: 0, y: 0 });
+        setGestureLock(false);
+        unlockScroller();
+        scheduleQuality(1, isLarge);
+        setLoading(false);
+        setLoadStage(0);
+        window.setTimeout(() => {
+          if (cancelled) return;
+          setVisibleUntil((v) =>
+            Math.min(opened.numPages, Math.max(v, isLarge ? 6 : 8))
+          );
+        }, 500);
+      };
+
+      const wait = Math.max(0, MIN_PDF_LOADER_MS - (Date.now() - openedAt));
+      if (wait > 0) window.setTimeout(reveal, wait);
+      else reveal();
     }
 
     async function openFromUrl(): Promise<boolean> {
       const pdfjs = await loadPdfJs();
       if (cancelled) return false;
-      setLoadHint("Please wait...");
+      setLoadStage(2);
       setLoadProgress((p) => Math.max(p, 12));
 
       loadingTask = pdfjs.getDocument({
@@ -623,9 +641,11 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         if (prog.total > 0) {
           reportedTotal = prog.total;
           if (prog.total >= LARGE_PDF_BYTES) setLargePdf(true);
-          setLoadProgress(
-            Math.min(96, Math.round((prog.loaded / prog.total) * 100))
-          );
+          const pct = Math.min(96, Math.round((prog.loaded / prog.total) * 100));
+          setLoadProgress(pct);
+          if (pct >= 70) setLoadStage(2);
+          else if (pct >= 35) setLoadStage(1);
+          else if (pct >= 15) setLoadStage(0);
         } else if (prog.loaded > 0) {
           setLoadProgress((prev) =>
             Math.max(
@@ -673,7 +693,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
       const pdfjs = await loadPdfJs();
       if (cancelled) return;
       if (fromCache) {
-        setLoadHint("Opening…");
+        setLoadStage(2);
         setLoadProgress((p) => Math.max(p, 70));
       }
       loadingTask = pdfjs.getDocument({
@@ -700,7 +720,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
       setPdf(null);
       setNumPages(0);
       setVisibleUntil(3);
-      setLoadHint("Please wait...");
+      setLoadStage(0);
       setLoadProgress(6);
       setLargePdf(false);
       savedScrollTopRef.current = 0;
@@ -711,20 +731,16 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
 
       const mobile = isMobileUa();
 
-      hintTimer = window.setTimeout(() => {
-        if (!cancelled && !doc) {
-          setLoadHint(
-            mobile
-              ? "Loading on mobile — please wait…"
-              : "Large catalog — almost ready…"
-          );
-        }
-      }, 4000);
+      // Calm rotating lines — slow enough to feel intentional
+      hintTimer = window.setInterval(() => {
+        if (cancelled || doc) return;
+        setLoadStage((s) => Math.min(s + 1, PDF_LOAD_STAGES.length - 1));
+      }, 2200);
 
       tickTimer = window.setInterval(() => {
         if (cancelled || doc) return;
-        setLoadProgress((p) => (p > 0 && p < 85 ? p + 2 : p));
-      }, 400);
+        setLoadProgress((p) => (p > 0 && p < 88 ? p + 1 : p));
+      }, 600);
 
       const fileId = catalog.drive_file_id;
 
@@ -785,25 +801,28 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
           if (cancelled) return;
         }
 
-        setLoadHint("Please wait...");
+        setLoadStage(1);
         setLoadProgress((p) => Math.max(p, 25));
         const data = await fetchPdfWithProgress(pdfApiUrl, (loaded, total) => {
           if (cancelled) return;
           if (total >= LARGE_PDF_BYTES) setLargePdf(true);
           if (total > 0) {
-            setLoadProgress(Math.min(96, Math.round((loaded / total) * 100)));
+            const pct = Math.min(96, Math.round((loaded / total) * 100));
+            setLoadProgress(pct);
+            if (pct >= 70) setLoadStage(2);
+            else if (pct >= 35) setLoadStage(1);
           }
         });
         if (cancelled) return;
         await openFromData(data, false);
       } catch {
         if (cancelled) return;
-        setLoadHint("Please wait...");
+        setLoadStage(1);
         setLoadProgress(30);
         window.setTimeout(() => {
           if (cancelled) return;
           void openFromUrl().catch(() => {
-            if (!cancelled) setLoadHint("Please wait...");
+            if (!cancelled) setLoadStage(2);
           });
         }, 600);
       }
@@ -812,7 +831,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
     openPdf();
     return () => {
       cancelled = true;
-      if (hintTimer) window.clearTimeout(hintTimer);
+      if (hintTimer) window.clearInterval(hintTimer);
       if (tickTimer) window.clearInterval(tickTimer);
       try {
         loadingTask?.destroy?.();
@@ -1149,33 +1168,36 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
 
         {loading && (
           <div className="pdf-loading absolute inset-0 z-10 flex flex-col items-center justify-center px-6">
-            <div className="pdf-loading-card">
-              <div className="pdf-loading-logo-wrap">
+            <div className="pdf-loading-panel" aria-busy="true" aria-live="polite">
+              <div className="pdf-loading-mark">
                 <Image
                   src="/logo.png"
-                  alt="SAIM Graphics"
-                  width={96}
-                  height={96}
+                  alt=""
+                  width={72}
+                  height={72}
                   className="pdf-loading-logo"
                   priority
                 />
               </div>
               <p className="pdf-loading-brand">SAIM GRAPHICS</p>
-              <p className="pdf-loading-wait">{loadHint}</p>
+              <p className="pdf-loading-wait">Please Wait</p>
               <div
                 className="pdf-loading-bar"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={loadProgress}
+                aria-label="Catalog loading progress"
               >
                 <span
                   className="pdf-loading-bar-fill"
-                  style={{ width: `${Math.max(4, loadProgress)}%` }}
+                  style={{ width: `${Math.max(8, loadProgress)}%` }}
                 />
               </div>
               <p className="pdf-loading-pct">{loadProgress}%</p>
-              <p className="pdf-loading-sub">Loading design catalog…</p>
+              <p className="pdf-loading-stage" key={loadStage}>
+                {PDF_LOAD_STAGES[Math.min(loadStage, PDF_LOAD_STAGES.length - 1)]}
+              </p>
             </div>
           </div>
         )}

@@ -4,7 +4,8 @@ const PREFETCH_CACHE = "saim-pdf-prefetch-v1";
 const SMALL_PDF_MAX = 12 * 1024 * 1024;
 
 export function pdfApiUrlFor(fileId: string) {
-  return `/api/drive-pdf?id=${encodeURIComponent(fileId)}`;
+  // Path-based URL: Netlify CDN was ignoring ?id= and serving one PDF for all catalogs
+  return `/api/drive-pdf/${encodeURIComponent(fileId.trim())}`;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
