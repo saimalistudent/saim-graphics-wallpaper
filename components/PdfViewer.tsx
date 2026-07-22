@@ -460,7 +460,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
   ) {
     const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
     let nx = nextOffset.x;
-    let ny = Math.min(0, nextOffset.y);
+    const ny = Math.min(0, nextOffset.y);
     const stageEl = stageRef.current;
     const content = contentRef.current;
     if (stageEl && content) {
