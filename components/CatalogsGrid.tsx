@@ -1,14 +1,24 @@
 import { getCatalogs } from "@/lib/catalogs";
 import { CatalogCard } from "@/components/CatalogCard";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export async function CatalogsGrid() {
   const catalogs = await getCatalogs();
 
   if (catalogs.length === 0) {
+    const misconfigured = !isSupabaseConfigured();
     return (
       <div className="text-center py-16 text-text-secondary">
-        <p className="text-lg">No catalogs available yet.</p>
-        <p className="mt-2 text-sm">Check back soon or contact us for designs.</p>
+        <p className="text-lg">
+          {misconfigured
+            ? "Catalog database is not connected."
+            : "No catalogs available yet."}
+        </p>
+        <p className="mt-2 text-sm">
+          {misconfigured
+            ? "Add Supabase environment variables in Netlify and redeploy."
+            : "Check back soon or contact us for designs."}
+        </p>
       </div>
     );
   }
