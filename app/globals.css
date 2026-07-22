@@ -75,8 +75,8 @@ noscript .site-shell {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 40%, rgba(120, 40, 50, 0.28), transparent 65%),
-    linear-gradient(145deg, #1c0a10 0%, #0b0e16 50%, #180a0e 100%);
+    radial-gradient(ellipse 90% 70% at 50% 0%, rgba(201, 162, 39, 0.12), transparent 55%),
+    linear-gradient(180deg, #fffaf3 0%, #f3ebe0 100%);
 }
 
 .page-loader-inner {
@@ -84,72 +84,55 @@ noscript .site-shell {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.65rem;
-  padding: 1.5rem;
+  gap: 0.55rem;
+  padding: 1rem;
+}
+
+.page-loader-mark {
+  display: grid;
+  place-items: center;
 }
 
 .page-loader-logo {
-  filter: drop-shadow(0 8px 28px rgba(201, 162, 39, 0.28));
-  margin-bottom: 0.35rem;
+  width: 4.25rem;
+  height: 4.25rem;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(74, 4, 4, 0.12));
 }
 
 .page-loader-brand {
+  margin: 0;
   font-family: var(--font-playfair), Georgia, serif;
-  font-size: clamp(1.15rem, 4vw, 1.45rem);
+  font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: 0.025em;
-  color: #e8c547;
-  -webkit-text-fill-color: #e8c547;
-  background: none;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
-}
-
-.page-loader-sub {
-  font-size: 0.65rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.72);
+  letter-spacing: 0.08em;
+  color: #4a0404;
 }
 
 .page-loader-bar {
-  margin-top: 1.15rem;
-  width: 10.5rem;
-  height: 0.4rem;
+  margin-top: 0.55rem;
+  width: 7.5rem;
+  height: 2px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(74, 4, 4, 0.1);
   overflow: hidden;
-  border: 1px solid rgba(201, 162, 39, 0.28);
 }
 
 .page-loader-bar span {
   display: block;
   height: 100%;
-  width: 8%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #8b6914, #fef1a2, #c9a227);
-  box-shadow: 0 0 10px rgba(232, 197, 71, 0.4);
+  background: linear-gradient(90deg, #8b6914, #c9a227);
   transition: width 0.2s ease-out;
-}
-
-.page-loader-bar--pct span {
-  animation: none;
-}
-
-.page-loader-pct {
-  margin: 0.55rem 0 0;
-  font-family: var(--font-playfair), Georgia, serif;
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #fef1a2;
-  font-variant-numeric: tabular-nums;
 }
 
 .page-loader-wait {
   margin: 0.15rem 0 0;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(74, 4, 4, 0.55);
 }
 
 @keyframes loader-slide {
@@ -172,8 +155,7 @@ noscript .site-shell {
   }
 
   .page-loader-bar span {
-    animation: none;
-    width: 100%;
+    transition: none;
   }
 }
 
@@ -1594,112 +1576,86 @@ html.pdf-viewing .pdf-page-inner {
 }
 
 .pdf-loading {
-  background: linear-gradient(160deg, #1a0c10 0%, #0c080a 55%, #120a0e 100%);
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 20%, rgba(201, 162, 39, 0.1), transparent 55%),
+    linear-gradient(180deg, #fffaf3 0%, #f3ebe0 100%);
 }
 
-.pdf-loading-card {
+.pdf-loading-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(100%, 17.5rem);
-  padding: 1.35rem 1.25rem 1.2rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(201, 162, 39, 0.35);
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(74, 4, 4, 0.35) 100%
-  );
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   text-align: center;
+  gap: 0.45rem;
+  width: min(100%, 14rem);
 }
 
-.pdf-loading-logo-wrap {
-  position: relative;
-  margin-bottom: 0.65rem;
-}
-
-.pdf-loading-logo-wrap::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 130%;
-  height: 130%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(232, 197, 71, 0.35) 0%,
-    transparent 70%
-  );
-  animation: pdf-logo-pulse 1.8s ease-in-out infinite;
-  pointer-events: none;
+.pdf-loading-mark {
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.15rem;
 }
 
 .pdf-loading-logo {
-  position: relative;
-  z-index: 1;
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 4.25rem;
+  height: 4.25rem;
   object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 6px 14px rgba(74, 4, 4, 0.12));
+  animation: pdf-logo-soft 2.4s ease-in-out infinite;
 }
 
 .pdf-loading-brand {
   margin: 0;
   font-family: var(--font-playfair), Georgia, serif;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #e8c547;
+  color: #4a0404;
 }
 
 .pdf-loading-wait {
-  margin: 0.45rem 0 0;
-  font-size: 0.92rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(74, 4, 4, 0.55);
 }
 
 .pdf-loading-bar {
-  width: 100%;
-  height: 0.45rem;
-  margin-top: 0.9rem;
+  width: 7.5rem;
+  height: 2px;
+  margin-top: 0.55rem;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(201, 162, 39, 0.25);
+  background: rgba(74, 4, 4, 0.1);
 }
 
 .pdf-loading-bar-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #8b6914, #e8c547, #fef1a2);
-  box-shadow: 0 0 12px rgba(232, 197, 71, 0.45);
-  transition: width 0.25s ease-out;
+  background: linear-gradient(90deg, #8b6914, #c9a227);
+  transition: width 0.35s ease-out;
 }
 
 .pdf-loading-pct {
-  margin: 0.55rem 0 0;
+  margin: 0.35rem 0 0;
   font-family: var(--font-playfair), Georgia, serif;
-  font-size: 1.35rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #fef1a2;
   letter-spacing: 0.04em;
-  tabular-nums: true;
+  color: #4a0404;
   font-variant-numeric: tabular-nums;
 }
 
-.pdf-loading-sub {
+.pdf-loading-stage {
   margin: 0.2rem 0 0;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  min-height: 1rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(74, 4, 4, 0.58);
+  animation: pdf-stage-fade 0.4s ease-out;
 }
 
 .pdf-spinner {
@@ -1717,20 +1673,32 @@ html.pdf-viewing .pdf-page-inner {
   }
 }
 
-@keyframes pdf-logo-pulse {
+@keyframes pdf-logo-soft {
   0%,
   100% {
-    opacity: 0.65;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(1);
+    opacity: 1;
   }
   50% {
+    transform: scale(1.04);
+    opacity: 0.92;
+  }
+}
+
+@keyframes pdf-stage-fade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.08);
+    transform: translateY(0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pdf-loading-logo-wrap::before {
+  .pdf-loading-logo,
+  .pdf-loading-stage {
     animation: none;
   }
 

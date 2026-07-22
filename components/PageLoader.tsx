@@ -9,7 +9,7 @@ import {
 } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { BRAND_NAME, BRAND_SUBTITLE } from "@/styles/tokens";
+import { BRAND_NAME } from "@/styles/tokens";
 
 type PageReadyContextValue = {
   ready: boolean;
@@ -21,13 +21,14 @@ export function usePageReady() {
   return useContext(PageReadyContext);
 }
 
-const MIN_LOADER_MS = 850;
+/** Short branded splash — not a long wait screen */
+const MIN_LOADER_MS = 520;
 
 function estimatePageProgress(): number {
   if (typeof document === "undefined") return 0;
   if (document.readyState === "complete") return 100;
 
-  let pct = document.readyState === "interactive" ? 62 : 18;
+  let pct = document.readyState === "interactive" ? 68 : 22;
 
   try {
     const resources = performance.getEntriesByType(
@@ -35,21 +36,13 @@ function estimatePageProgress(): number {
     ) as PerformanceResourceTiming[];
     if (resources.length > 0) {
       let done = 0;
-      let weighted = 0;
-      let weightSum = 0;
       for (const r of resources) {
-        const size = r.transferSize || r.encodedBodySize || 1;
-        weightSum += size;
-        if (r.responseEnd > 0) {
-          done += 1;
-          weighted += size;
-        }
+        if (r.responseEnd > 0) done += 1;
       }
-      const byCount = (done / Math.max(resources.length, 1)) * 100;
-      const bySize =
-        weightSum > 0 ? (weighted / weightSum) * 100 : byCount;
-      const resourcePct = Math.round(byCount * 0.45 + bySize * 0.55);
-      pct = Math.max(pct, Math.min(94, resourcePct));
+      pct = Math.max(
+        pct,
+        Math.min(94, Math.round((done / Math.max(resources.length, 1)) * 100))
+      );
     }
   } catch {
     // ignore
@@ -61,7 +54,7 @@ function estimatePageProgress(): number {
 export function PageLoader({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
-  const [progress, setProgress] = useState(6);
+  const [progress, setProgress] = useState(12);
   const prefersReducedMotion = useReducedMotion();
 
   const finish = useCallback(
@@ -72,8 +65,8 @@ export function PageLoader({ children }: { children: React.ReactNode }) {
 
       window.setTimeout(() => {
         setLoading(false);
-        window.setTimeout(() => setReady(true), prefersReducedMotion ? 0 : 280);
-      }, prefersReducedMotion ? 80 : wait);
+        window.setTimeout(() => setReady(true), prefersReducedMotion ? 0 : 220);
+      }, prefersReducedMotion ? 40 : wait);
     },
     [prefersReducedMotion]
   );
@@ -81,15 +74,11 @@ export function PageLoader({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const startedAt = Date.now();
     document.documentElement.classList.add("loader-active");
-    setProgress(8);
+    setProgress(14);
 
     const tick = window.setInterval(() => {
-      setProgress((prev) => {
-        const next = estimatePageProgress();
-        // Keep bar moving forward only
-        return Math.max(prev, next);
-      });
-    }, 120);
+      setProgress((prev) => Math.max(prev, estimatePageProgress()));
+    }, 100);
 
     const onLoad = () => {
       window.clearInterval(tick);
@@ -102,7 +91,7 @@ export function PageLoader({ children }: { children: React.ReactNode }) {
       window.addEventListener("load", onLoad);
     }
 
-    const fallback = window.setTimeout(() => onLoad(), 4000);
+    const fallback = window.setTimeout(() => onLoad(), 2800);
 
     return () => {
       window.removeEventListener("load", onLoad);
@@ -125,55 +114,50 @@ export function PageLoader({ children }: { children: React.ReactNode }) {
           <motion.div
             className="page-loader"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.45, ease: "easeInOut" } }}
+            exit={{
+              opacity: 0,
+              transition: { duration: 0.28, ease: "easeOut" },
+            }}
             aria-busy="true"
             aria-label="Loading website"
           >
             <div className="page-loader-inner">
               <motion.div
-                className="page-loader-logo"
-                initial={{ opacity: 0, scale: 0.88 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.55, ease: "easeOut" }}
+                className="page-loader-mark"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
               >
                 <Image
                   src="/logo.png"
                   alt=""
-                  width={96}
-                  height={96}
-                  className="object-contain"
+                  width={72}
+                  height={72}
+                  className="page-loader-logo"
                   priority
                 />
               </motion.div>
 
               <motion.p
-                className="page-loader-brand font-heading font-bold tracking-wide"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15, duration: 0.45 }}
+                className="page-loader-brand"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.08, duration: 0.3 }}
               >
                 {BRAND_NAME}
               </motion.p>
-              <motion.p
-                className="page-loader-sub"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.28, duration: 0.4 }}
-              >
-                {BRAND_SUBTITLE}
-              </motion.p>
 
               <div
-                className="page-loader-bar page-loader-bar--pct"
+                className="page-loader-bar"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={progress}
               >
-                <span style={{ width: `${Math.max(6, progress)}%` }} />
+                <span style={{ width: `${Math.max(10, progress)}%` }} />
               </div>
-              <p className="page-loader-pct">{progress}%</p>
-              <p className="page-loader-wait">Please wait...</p>
+
+              <p className="page-loader-wait">Please Wait</p>
             </div>
           </motion.div>
         )}

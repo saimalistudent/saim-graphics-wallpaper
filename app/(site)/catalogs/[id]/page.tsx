@@ -27,7 +27,7 @@ export default async function CatalogViewerPage({ params }: Props) {
   return (
     <section className="pdf-page-section">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 h-full pdf-page-inner">
-        <PdfViewer catalog={catalog} />
+        <PdfViewer key={catalog.id} catalog={catalog} />
       </div>
     </section>
   );
