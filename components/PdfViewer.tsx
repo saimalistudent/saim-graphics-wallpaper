@@ -90,10 +90,19 @@ function releasePdfDoc(doc: PDFDocumentProxy | null | undefined) {
   }
 }
 
+type MapUpsertProto = typeof Map.prototype & {
+  getOrInsertComputed?: (
+    key: unknown,
+    callbackFn: (key: unknown) => unknown
+  ) => unknown;
+  getOrInsert?: (key: unknown, value: unknown) => unknown;
+};
+
 async function loadPdfJs() {
   // pdf.js 5.5+/6 needs Map upsert APIs; polyfill for older mobile Chrome
-  if (typeof Map.prototype.getOrInsertComputed !== "function") {
-    Object.defineProperty(Map.prototype, "getOrInsertComputed", {
+  const mapProto = Map.prototype as MapUpsertProto;
+  if (typeof mapProto.getOrInsertComputed !== "function") {
+    Object.defineProperty(mapProto, "getOrInsertComputed", {
       value(this: Map<unknown, unknown>, key: unknown, callbackFn: (key: unknown) => unknown) {
         if (this.has(key)) return this.get(key);
         const value = callbackFn(key);
@@ -104,8 +113,8 @@ async function loadPdfJs() {
       configurable: true,
     });
   }
-  if (typeof Map.prototype.getOrInsert !== "function") {
-    Object.defineProperty(Map.prototype, "getOrInsert", {
+  if (typeof mapProto.getOrInsert !== "function") {
+    Object.defineProperty(mapProto, "getOrInsert", {
       value(this: Map<unknown, unknown>, key: unknown, value: unknown) {
         if (this.has(key)) return this.get(key);
         this.set(key, value);
