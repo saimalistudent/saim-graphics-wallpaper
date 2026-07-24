@@ -93,7 +93,7 @@ export function CatalogManager() {
     const formData = new FormData();
     formData.append("file", thumbnailFile);
 
-    const res = await fetch("/api/admin/upload", {
+    const res = await fetch("/api/admin/upload?kind=thumb", {
       method: "POST",
       body: formData,
     });

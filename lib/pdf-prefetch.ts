@@ -38,7 +38,8 @@ export function prefetchCatalogPdf(fileId: string) {
       // Probe size first — skip huge catalogs on mobile
       const head = await fetch(url, { method: "HEAD", cache: "force-cache" });
       const len = Number(head.headers.get("content-length") || 0);
-      if (len > SMALL_PDF_MAX) return;
+      // 0 = unknown / not cached yet — don't pull a possibly huge PDF into Cache API
+      if (!len || len > SMALL_PDF_MAX) return;
 
       const cache = await caches.open(PREFETCH_CACHE);
       if (await cache.match(url)) return;

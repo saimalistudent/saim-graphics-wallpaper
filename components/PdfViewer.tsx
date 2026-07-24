@@ -48,7 +48,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const LARGE_PDF_BYTES = 12 * 1024 * 1024;
 const SMALL_PDF_MAX = 12 * 1024 * 1024;
-const MIN_PDF_LOADER_MS = 480;
+const MIN_PDF_LOADER_MS = 220;
 
 /** Short, pleasant lines — keep the wait calm without feeling stuck */
 const PDF_LOAD_STAGES = [
@@ -595,7 +595,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         setNumPages(opened.numPages);
         setLargePdf(isLarge);
         // Few pages first = first paint sooner on heavy catalogs
-        setVisibleUntil(Math.min(opened.numPages, isLarge ? 3 : 4));
+        setVisibleUntil(Math.min(opened.numPages, isLarge ? 2 : 3));
         scaleRef.current = 1;
         offsetRef.current = { x: 0, y: 0 };
         savedScrollTopRef.current = 0;
@@ -609,9 +609,9 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         window.setTimeout(() => {
           if (cancelled) return;
           setVisibleUntil((v) =>
-            Math.min(opened.numPages, Math.max(v, isLarge ? 6 : 8))
+            Math.min(opened.numPages, Math.max(v, isLarge ? 5 : 7))
           );
-        }, 500);
+        }, 400);
       };
 
       const wait = Math.max(0, MIN_PDF_LOADER_MS - (Date.now() - openedAt));
@@ -631,6 +631,8 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         verbosity: 0,
         disableAutoFetch: false,
         disableStream: false,
+        // Mobile: progressive full GET (hits cold stream) — avoids waiting on Range+full cache
+        disableRange: isMobileUa(),
         rangeChunkSize: isMobileUa() ? 65536 : 65536 * 2,
         ...pdfJsAssets(),
       });
@@ -1162,7 +1164,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
             <div className="pdf-loading-panel" aria-busy="true" aria-live="polite">
               <div className="pdf-loading-mark">
                 <Image
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt=""
                   width={72}
                   height={72}

@@ -10,7 +10,7 @@ export const DEFAULT_PROMO_POPUP: PromoPopup = {
   enabled: true,
   title: "Special Offer",
   body: "5% OFF on 5,000 ft work — premium 3D panaflex designs in Gujranwala. Browse catalogs and send your favourite screenshot on WhatsApp.",
-  image_url: "/promo-popup-sample.png",
+  image_url: "/promo-popup-sample.webp",
   cta_label: "View Designs",
   cta_url: "/catalogs",
   updated_at: new Date(0).toISOString(),
@@ -29,7 +29,14 @@ export async function getPromoPopup(): Promise<PromoPopup> {
       .maybeSingle();
 
     if (error || !data) return DEFAULT_PROMO_POPUP;
-    return data as PromoPopup;
+    const row = data as PromoPopup;
+    return {
+      ...row,
+      image_url: row.image_url?.replace(
+        "/promo-popup-sample.png",
+        "/promo-popup-sample.webp"
+      ) ?? null,
+    };
   } catch {
     return DEFAULT_PROMO_POPUP;
   }
@@ -46,5 +53,7 @@ export async function getActivePromoPopup(): Promise<PromoPopup | null> {
 export function promoImageSrc(imageUrl: string | null | undefined): string | null {
   const url = imageUrl?.trim() || null;
   if (!url) return null;
-  return url === "/promo-popup-sample.png" ? `${url}?v=3` : url;
+  return url === "/promo-popup-sample.webp" || url === "/promo-popup-sample.png"
+    ? `/promo-popup-sample.webp?v=4`
+    : url;
 }

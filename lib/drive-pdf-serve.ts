@@ -11,7 +11,7 @@ import {
   unlinkSync,
   renameSync,
 } from "fs";
-import { Readable } from "stream";
+import { PassThrough, Readable } from "stream";
 import { pipeline } from "stream/promises";
 import path from "path";
 
@@ -82,13 +82,23 @@ function pdfHeaders(fileId: string, extra: Record<string, string> = {}) {
   return {
     "Content-Type": "application/pdf",
     "Accept-Ranges": "bytes",
-    // Per-file identity — Netlify was collapsing ?id= into one CDN object
     "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
     "Netlify-Vary": "query",
     "CDN-Cache-Control": "public, max-age=86400",
     "X-Drive-File-Id": fileId,
     ...extra,
   };
+}
+
+/** Cold stream: no Accept-Ranges so pdf.js uses progressive full download */
+function coldStreamHeaders(fileId: string, contentLength: string | null) {
+  const extra: Record<string, string> = {
+    "Accept-Ranges": "none",
+    "Cache-Control": "public, max-age=300, stale-while-revalidate=86400",
+    "CDN-Cache-Control": "public, max-age=300",
+  };
+  if (contentLength) extra["Content-Length"] = contentLength;
+  return pdfHeaders(fileId, extra);
 }
 
 function fileResponse(
@@ -215,6 +225,116 @@ async function downloadAndCache(fileId: string, filePath: string) {
   renameSync(tmpPath, filePath);
 }
 
+/**
+ * Stream Drive PDF to the client immediately while writing /tmp cache.
+ * First byte reaches the phone without waiting for the full Drive download.
+ */
+function streamAndCache(
+  fileId: string,
+  filePath: string,
+  driveRes: Response
+): NextResponse {
+  if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
+  if (!driveRes.body) throw new Error("Empty Drive body");
+
+  const tmpPath = `${filePath}.part`;
+  try {
+    if (existsSync(tmpPath)) unlinkSync(tmpPath);
+  } catch {
+    // ignore
+  }
+
+  const nodeIn = Readable.fromWeb(
+    driveRes.body as unknown as import("stream/web").ReadableStream
+  );
+  const forClient = new PassThrough();
+  const forDisk = new PassThrough();
+
+  nodeIn.on("data", (chunk: Buffer) => {
+    forClient.write(chunk);
+    forDisk.write(chunk);
+  });
+  nodeIn.on("end", () => {
+    forClient.end();
+    forDisk.end();
+  });
+  nodeIn.on("error", (err) => {
+    forClient.destroy(err);
+    forDisk.destroy(err);
+  });
+
+  void pipeline(forDisk, createWriteStream(tmpPath))
+    .then(() => {
+      if (!isValidCachedPdf(tmpPath)) {
+        try {
+          unlinkSync(tmpPath);
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      try {
+        if (existsSync(filePath)) unlinkSync(filePath);
+      } catch {
+        // ignore
+      }
+      try {
+        renameSync(tmpPath, filePath);
+      } catch {
+        // ignore
+      }
+    })
+    .catch(() => {
+      try {
+        unlinkSync(tmpPath);
+      } catch {
+        // ignore
+      }
+    });
+
+  const contentLength = driveRes.headers.get("content-length");
+  const webStream = Readable.toWeb(forClient) as unknown as ReadableStream;
+
+  return new NextResponse(webStream, {
+    status: 200,
+    headers: coldStreamHeaders(fileId, contentLength),
+  });
+}
+
+export async function headDrivePdf(fileId: string) {
+  if (!fileId || !FILE_ID_RE.test(fileId)) {
+    return NextResponse.json({ error: "Invalid file id" }, { status: 400 });
+  }
+
+  try {
+    const filePath = cachePath(fileId);
+    if (existsSync(filePath) && isValidCachedPdf(filePath)) {
+      const total = statSync(filePath).size;
+      return new NextResponse(null, {
+        status: 200,
+        headers: pdfHeaders(fileId, {
+          "Content-Length": String(total),
+        }),
+      });
+    }
+
+    // Unknown size until cached — signal "small enough to prefetch" conservatively
+    return new NextResponse(null, {
+      status: 200,
+      headers: pdfHeaders(fileId, {
+        "Content-Length": "0",
+        "Cache-Control": "no-store",
+        "CDN-Cache-Control": "no-store",
+      }),
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "HEAD failed" },
+      { status: 502 }
+    );
+  }
+}
+
 export async function serveDrivePdf(
   fileId: string,
   rangeHeader: string | null
@@ -236,8 +356,10 @@ export async function serveDrivePdf(
       }
     }
 
-    await downloadAndCache(fileId, filePath);
-    return fileResponse(fileId, filePath, rangeHeader);
+    // Cold open: stream to client while caching.
+    // Ignore Range so first bytes aren't blocked by a full Drive download.
+    const driveRes = await fetchFromDrive(fileId);
+    return streamAndCache(fileId, filePath, driveRes);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "PDF fetch failed" },

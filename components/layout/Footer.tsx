@@ -11,7 +11,7 @@ export function Footer() {
         <div className="flex flex-col items-center text-center gap-5">
           <Link href="/" className="group inline-flex flex-col items-center gap-3">
             <Image
-              src="/logo.png"
+              src="/logo.webp"
               alt="SAIM Graphics logo"
               width={72}
               height={72}

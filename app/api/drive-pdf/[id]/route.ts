@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { serveDrivePdf } from "@/lib/drive-pdf-serve";
+import { headDrivePdf, serveDrivePdf } from "@/lib/drive-pdf-serve";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,4 +12,12 @@ export async function GET(
 ) {
   const { id } = await context.params;
   return serveDrivePdf(id.trim(), request.headers.get("range"));
+}
+
+export async function HEAD(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  return headDrivePdf(id.trim());
 }
