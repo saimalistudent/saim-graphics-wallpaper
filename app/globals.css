@@ -266,7 +266,7 @@ h6 {
     inset 0 -1px 1px 3px rgba(250, 227, 133, 1);
 }
 
-/* Classic compact hero — leaves room for Trending Design */
+/* Classic compact hero ? leaves room for Trending Design */
 .hero-section {
   background: #08060a;
 }
@@ -317,6 +317,74 @@ h6 {
 
 .hero-inner {
   z-index: 1;
+}
+
+.hero-marquee {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto 0.45rem;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+}
+
+.hero-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 0.5rem;
+  padding: 0.2rem 0 0.35rem;
+  animation: hero-marquee-ltr 55s linear infinite;
+  will-change: transform;
+}
+
+.hero-marquee-slide {
+  flex: 0 0 auto;
+  width: 8.25rem;
+  aspect-ratio: 3 / 2;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(201, 162, 39, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: #120c10;
+}
+
+.hero-marquee-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@keyframes hero-marquee-ltr {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-marquee-track {
+    animation: none;
+    transform: translateX(0);
+  }
 }
 
 .hero-logo-wrap {
@@ -406,22 +474,25 @@ h6 {
 
 .hero-brand-title {
   margin: 0;
-  font-family: var(--font-playfair), Georgia, serif;
-  font-size: clamp(1.65rem, 6.5vw, 2.35rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: 0.025em;
+  font-family: var(--font-cinzel), "Times New Roman", serif;
+  font-size: clamp(0.95rem, 4.4vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
   background: linear-gradient(
     180deg,
-    #fff6d0 0%,
-    #e8c547 45%,
-    #c9a227 75%,
+    #fff8dc 0%,
+    #f0d56a 38%,
+    #e8c547 58%,
+    #c9a227 82%,
     #8b6914 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 
 .hero-location {
@@ -1292,7 +1363,7 @@ h6 {
 }
 
 .pdf-page-section {
-  padding: 0.65rem 0 0;
+  padding: 0.35rem 0 0;
 }
 
 html.pdf-viewing footer {
@@ -1332,7 +1403,7 @@ html.pdf-viewing .pdf-page-section {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.65rem 0 0;
+  padding: 0.25rem 0 0;
 }
 
 html.pdf-viewing .pdf-page-inner {
@@ -1345,7 +1416,7 @@ html.pdf-viewing .pdf-page-inner {
 .pdf-viewer-shell {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.3rem;
   flex: 1 1 auto;
   min-height: 280px;
   overflow: hidden;
@@ -1355,6 +1426,40 @@ html.pdf-viewing .pdf-page-inner {
 .pdf-viewer-top {
   flex-shrink: 0;
   touch-action: manipulation;
+}
+
+.pdf-viewer-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.pdf-viewer-title {
+  font-size: 0.875rem;
+  line-height: 1.25;
+  min-width: 0;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .pdf-viewer-title {
+    font-size: 1.0625rem;
+    letter-spacing: 0.03em;
+  }
+}
+
+.pdf-viewer-tip {
+  margin-top: 0.28rem;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  text-align: right;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(201, 162, 39, 0.22);
+  background: rgba(201, 162, 39, 0.1);
 }
 
 /* Isolates PDF stage; scroll is native on .pdf-scroller */
@@ -1636,7 +1741,7 @@ html.pdf-viewing .pdf-page-inner {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #8b6914, #c9a227);
-  transition: width 0.35s ease-out;
+  transition: width 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .pdf-loading-pct {
@@ -1711,12 +1816,12 @@ html.pdf-viewing .pdf-page-inner {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  min-height: 2.5rem;
-  min-width: 2.75rem;
-  padding: 0.45rem 0.9rem 0.45rem 0.7rem;
-  border-radius: 0.4rem;
-  font-size: 0.75rem;
+  gap: 0.25rem;
+  min-height: 1.85rem;
+  min-width: auto;
+  padding: 0.28rem 0.65rem 0.28rem 0.5rem;
+  border-radius: 0.35rem;
+  font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1849,4 +1954,144 @@ html.pdf-viewing .pdf-page-inner {
 .how-hint {
   font-size: 0.8rem;
   color: #6b6b6b;
+}
+
+/* ?? Promo offer popup (image only) ?? */
+.promo-popup-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.1rem;
+  pointer-events: none;
+}
+
+.promo-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgba(12, 6, 8, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.promo-popup-card {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  width: min(100%, 21.5rem);
+  aspect-ratio: 2 / 3;
+  max-height: min(86vh, 36rem);
+  overflow: hidden;
+  border-radius: 1rem;
+  background: #1a0a0e;
+  border: 1px solid rgba(201, 162, 39, 0.5);
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  will-change: transform, opacity;
+}
+
+.promo-popup-shell {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  width: min(100%, 21.5rem);
+}
+
+.promo-popup-shell .promo-popup-card {
+  width: 100%;
+}
+
+.promo-popup-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.promo-popup-close {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 197, 71, 0.5);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(26, 10, 14, 0.5)),
+    rgba(26, 10, 14, 0.78);
+  color: #fef1a2;
+  cursor: pointer;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.promo-popup-close:hover {
+  transform: scale(1.06);
+  border-color: rgba(254, 241, 162, 0.75);
+  background:
+    linear-gradient(145deg, rgba(232, 197, 71, 0.35), rgba(26, 10, 14, 0.7)),
+    rgba(26, 10, 14, 0.85);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(201, 162, 39, 0.18);
+}
+
+.promo-popup-close:active {
+  transform: scale(0.96);
+}
+
+.promo-popup-close-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+@media (max-width: 380px) {
+  .promo-popup-shell,
+  .promo-popup-card {
+    width: min(100%, 19.5rem);
+  }
+
+  .promo-popup-close {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-popup-close {
+    transition: none;
+  }
+
+  .promo-popup-close:hover,
+  .promo-popup-close:active {
+    transform: none;
+  }
 }

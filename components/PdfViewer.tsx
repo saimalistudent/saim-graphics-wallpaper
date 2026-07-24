@@ -566,7 +566,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
     if (!el) return;
     function measure() {
       if (!el) return;
-      setBaseWidth(Math.max(260, Math.floor(el.clientWidth - 8)));
+      setBaseWidth(Math.max(280, Math.floor(el.clientWidth - 2)));
     }
     measure();
     const ro = new ResizeObserver(measure);
@@ -622,8 +622,8 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
     async function openFromUrl(): Promise<boolean> {
       const pdfjs = await loadPdfJs();
       if (cancelled) return false;
-      setLoadStage(2);
-      setLoadProgress((p) => Math.max(p, 12));
+      setLoadStage((s) => Math.max(s, 1));
+      setLoadProgress((p) => Math.max(p, 18));
 
       loadingTask = pdfjs.getDocument({
         url: pdfApiUrl,
@@ -638,21 +638,10 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
       let reportedTotal = 0;
       loadingTask.onProgress = (prog: { loaded: number; total: number }) => {
         if (cancelled) return;
+        // Progress bar is calm/fake — only track size for large-PDF mode
         if (prog.total > 0) {
           reportedTotal = prog.total;
           if (prog.total >= LARGE_PDF_BYTES) setLargePdf(true);
-          const pct = Math.min(96, Math.round((prog.loaded / prog.total) * 100));
-          setLoadProgress(pct);
-          if (pct >= 70) setLoadStage(2);
-          else if (pct >= 35) setLoadStage(1);
-          else if (pct >= 15) setLoadStage(0);
-        } else if (prog.loaded > 0) {
-          setLoadProgress((prev) =>
-            Math.max(
-              prev,
-              Math.min(92, 12 + Math.round(prog.loaded / (1024 * 1024)))
-            )
-          );
         }
       };
 
@@ -693,8 +682,8 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
       const pdfjs = await loadPdfJs();
       if (cancelled) return;
       if (fromCache) {
-        setLoadStage(2);
-        setLoadProgress((p) => Math.max(p, 70));
+        setLoadStage((s) => Math.max(s, 2));
+        setLoadProgress((p) => Math.max(p, 72));
       }
       loadingTask = pdfjs.getDocument({
         data,
@@ -731,22 +720,27 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
 
       const mobile = isMobileUa();
 
-      // Calm rotating lines — slow enough to feel intentional
+      // Calm % — only moves forward, not tied to byte download (avoids 90→10 jumps)
       hintTimer = window.setInterval(() => {
         if (cancelled || doc) return;
         setLoadStage((s) => Math.min(s + 1, PDF_LOAD_STAGES.length - 1));
-      }, 2200);
+      }, 2400);
 
       tickTimer = window.setInterval(() => {
         if (cancelled || doc) return;
-        setLoadProgress((p) => (p > 0 && p < 88 ? p + 1 : p));
-      }, 600);
+        setLoadProgress((p) => {
+          if (p >= 94) return p;
+          if (p >= 86) return p + 1;
+          if (p >= 70) return p + 1;
+          return p + 2;
+        });
+      }, 700);
 
       const fileId = catalog.drive_file_id;
 
       try {
         const pdfjsReady = loadPdfJs();
-        setLoadProgress(10);
+        setLoadProgress((p) => Math.max(p, 10));
 
         // Same-tab memory (small only)
         const mem = memoryPdfCache.get(fileId);
@@ -801,28 +795,28 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
           if (cancelled) return;
         }
 
-        setLoadStage(1);
-        setLoadProgress((p) => Math.max(p, 25));
+        setLoadStage((s) => Math.max(s, 1));
+        setLoadProgress((p) => Math.max(p, 28));
         const data = await fetchPdfWithProgress(pdfApiUrl, (loaded, total) => {
           if (cancelled) return;
           if (total >= LARGE_PDF_BYTES) setLargePdf(true);
+          // Do not map bytes → % (keeps bar calm & forward-only)
           if (total > 0) {
-            const pct = Math.min(96, Math.round((loaded / total) * 100));
-            setLoadProgress(pct);
-            if (pct >= 70) setLoadStage(2);
-            else if (pct >= 35) setLoadStage(1);
+            const ratio = loaded / total;
+            if (ratio >= 0.55) setLoadStage((s) => Math.max(s, 2));
+            else if (ratio >= 0.2) setLoadStage((s) => Math.max(s, 1));
           }
         });
         if (cancelled) return;
         await openFromData(data, false);
       } catch {
         if (cancelled) return;
-        setLoadStage(1);
-        setLoadProgress(30);
+        setLoadStage((s) => Math.max(s, 1));
+        setLoadProgress((p) => Math.max(p, 32));
         window.setTimeout(() => {
           if (cancelled) return;
           void openFromUrl().catch(() => {
-            if (!cancelled) setLoadStage(2);
+            if (!cancelled) setLoadStage((s) => Math.max(s, 2));
           });
         }, 600);
       }
@@ -1107,29 +1101,26 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
   return (
     <div className="pdf-viewer-shell">
       <div className="pdf-viewer-top">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="pdf-viewer-top-row">
           <button
             type="button"
             onClick={handleBack}
             className="pdf-back-chip gold-btn shrink-0"
             aria-label="Back to catalogs"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back</span>
           </button>
-          <h1 className="font-heading text-base sm:text-xl font-bold text-burgundy truncate">
+          <h1 className="pdf-viewer-title font-heading font-bold text-burgundy truncate">
             {catalog.title}
           </h1>
         </div>
         <p
-          className="sm:hidden mt-2 text-[13px] text-text-secondary bg-gold/10 rounded-lg px-3 py-2 border border-gold/20 text-right leading-relaxed font-urdu"
+          className="pdf-viewer-tip sm:hidden font-urdu"
           dir="rtl"
           lang="ur"
         >
           اپنی پسندیدہ ڈیزائن کا اسکرین شاٹ لیں اور نیچے WhatsApp بٹن دبا کر ہمیں بھیج دیں
-        </p>
-        <p className="mt-1.5 text-[11px] text-text-secondary text-center sm:text-left">
-          Scroll up/down · Pinch zoom · Double-tap zoom / restore
         </p>
       </div>
 
