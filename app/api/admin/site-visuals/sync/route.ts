@@ -57,7 +57,7 @@ export async function POST() {
       );
     }
 
-    let rows = slides ?? [];
+    const rows = slides ?? [];
     if (!rows.length) {
       const seeded = [];
       for (let i = 1; i <= 5; i++) {
