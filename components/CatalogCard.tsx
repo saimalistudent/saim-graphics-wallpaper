@@ -28,11 +28,12 @@ type CatalogCardProps = {
 function buildDriveCandidates(fileId: string, preferred?: string | null) {
   const list = [
     preferred?.trim() || null,
-    getDriveThumbnailUrl(fileId, 800),
-    getDriveThumbnailFallbackUrl(fileId, 800),
+    // Mobile-first: smaller thumbs first (HD enough for card size)
     getDriveThumbnailUrl(fileId, 400),
     getDriveThumbnailFallbackUrl(fileId, 400),
-    `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`,
+    getDriveThumbnailUrl(fileId, 640),
+    getDriveThumbnailFallbackUrl(fileId, 640),
+    `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`,
   ].filter(Boolean) as string[];
 
   return Array.from(new Set(list));
@@ -127,7 +128,8 @@ export function CatalogCard({
                     alt={catalog.title}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 22vw"
+                    quality={85}
                     onError={handleThumbError}
                   />
                 )}

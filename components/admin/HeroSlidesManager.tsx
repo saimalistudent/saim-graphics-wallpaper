@@ -51,7 +51,7 @@ export function HeroSlidesManager() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const up = await fetch("/api/admin/upload", {
+      const up = await fetch("/api/admin/upload?kind=hero", {
         method: "POST",
         body: form,
       });
@@ -131,8 +131,8 @@ export function HeroSlidesManager() {
               />
               <p className="text-xs text-text-secondary">
                 {busyId === slide.id
-                  ? "Uploading…"
-                  : "Nayi image = purani replace + delete"}
+                  ? "Uploading… (HD WebP optimize)"
+                  : "Nayi image = HD compress + purani replace"}
               </p>
             </div>
           ))}

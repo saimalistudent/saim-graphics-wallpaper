@@ -10,8 +10,10 @@ const nextConfig: NextConfig = {
   transpilePackages: ["pdfjs-dist"],
   images: {
     localPatterns: [
+      { pathname: "/logo.webp" },
       { pathname: "/logo.png" },
       { pathname: "/catalog-previews/**" },
+      { pathname: "/promo-popup-sample.webp" },
       { pathname: "/promo-popup-sample.png" },
       { pathname: "/hero-slides/**" },
     ],

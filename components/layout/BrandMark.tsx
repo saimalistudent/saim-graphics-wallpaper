@@ -48,7 +48,7 @@ export function BrandMark({
   const content = (
     <span className={cn("inline-flex items-center gap-2 sm:gap-3 min-w-0 max-w-full", className)}>
       <Image
-        src="/logo.png"
+        src="/logo.webp"
         alt="SAIM Graphics logo"
         width={s.logo}
         height={s.logo}

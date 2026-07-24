@@ -67,7 +67,7 @@ export function PromoPopupManager() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/admin/upload", {
+      const res = await fetch("/api/admin/upload?kind=promo", {
         method: "POST",
         body: form,
       });
@@ -132,7 +132,7 @@ export function PromoPopupManager() {
         </label>
 
         <div>
-          <label className="admin-label">Popup image (2:3 ratio best)</label>
+          <label className="admin-label">Popup image (2:3 ratio best — auto HD WebP)</label>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
@@ -184,7 +184,7 @@ export function PromoPopupManager() {
             />
           ) : (
             <div className="aspect-[2/3] flex items-center justify-center bg-burgundy/5">
-              <Image src="/logo.png" alt="" width={64} height={64} />
+              <Image src="/logo.webp" alt="" width={64} height={64} />
             </div>
           )}
         </div>

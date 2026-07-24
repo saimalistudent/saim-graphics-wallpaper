@@ -4,7 +4,7 @@ export const CATALOG_THUMBNAIL_OVERRIDES: Record<
   { url: string; page: number }
 > = {
   "sg d1 (32) palling": {
-    url: "/catalog-previews/sg-d1-32-palling-p2.jpg",
+    url: "/catalog-previews/sg-d1-32-palling-p2.webp",
     page: 2,
   },
 };

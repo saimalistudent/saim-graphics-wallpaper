@@ -22,11 +22,11 @@ export function usePageReady() {
 }
 
 /** Brief brand beat after assets are ready — not a fake long wait */
-const MIN_LOADER_MS = 480;
+const MIN_LOADER_MS = 320;
 /** Only show slow-net tip after this wait (fast nets finish earlier) */
-const SLOW_HINT_MS = 3800;
+const SLOW_HINT_MS = 2800;
 /** Hard safety so a broken image never traps the user forever */
-const MAX_WAIT_MS = 28000;
+const MAX_WAIT_MS = 12000;
 
 const SLOW_NET_TIP = "Make sure your internet speed is fast";
 
@@ -257,7 +257,7 @@ export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
                 transition={{ duration: 0.35, ease: "easeOut" }}
               >
                 <Image
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt=""
                   width={72}
                   height={72}

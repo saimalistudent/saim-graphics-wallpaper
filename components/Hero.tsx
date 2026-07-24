@@ -35,8 +35,9 @@ export function Hero({ slides }: Props) {
                       src={slide.image_url}
                       alt=""
                       className="hero-marquee-image"
-                      loading={i < 4 ? "eager" : "lazy"}
+                      loading={i < 2 ? "eager" : "lazy"}
                       decoding="async"
+                      fetchPriority={i < 2 ? "high" : "low"}
                       draggable={false}
                     />
                   </div>
