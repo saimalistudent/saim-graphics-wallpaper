@@ -41,3 +41,10 @@ export async function getActivePromoPopup(): Promise<PromoPopup | null> {
   if (!promo.image_url?.trim()) return null;
   return promo;
 }
+
+/** Same URL PromoPopup renders (cache-bust for local sample) */
+export function promoImageSrc(imageUrl: string | null | undefined): string | null {
+  const url = imageUrl?.trim() || null;
+  if (!url) return null;
+  return url === "/promo-popup-sample.png" ? `${url}?v=3` : url;
+}

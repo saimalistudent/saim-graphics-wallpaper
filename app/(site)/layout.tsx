@@ -5,17 +5,26 @@ import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { PageVisitTracker } from "@/components/PageVisitTracker";
 import { PageLoader } from "@/components/PageLoader";
 import { PromoPopup } from "@/components/PromoPopup";
-import { getActivePromoPopup } from "@/lib/promo-popup";
+import { getActivePromoPopup, promoImageSrc } from "@/lib/promo-popup";
+import { getHeroSlides } from "@/lib/hero-slides";
 
 export default async function SiteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const promo = await getActivePromoPopup();
+  const [promo, slides] = await Promise.all([
+    getActivePromoPopup(),
+    getHeroSlides(),
+  ]);
+
+  const preloadSrcs = [
+    promoImageSrc(promo?.image_url),
+    ...slides.map((s) => s.image_url),
+  ];
 
   return (
-    <PageLoader preloadSrc={promo?.image_url}>
+    <PageLoader preloadSrcs={preloadSrcs}>
       <PageVisitTracker />
       <div className="site-topbar">
         <Navbar />

@@ -135,6 +135,16 @@ noscript .site-shell {
   color: rgba(74, 4, 4, 0.55);
 }
 
+.page-loader-slow-tip {
+  margin: 0.55rem 0 0;
+  max-width: 14rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(74, 4, 4, 0.45);
+}
+
 @keyframes loader-slide {
   0% {
     transform: translateX(-120%);
