@@ -6,19 +6,7 @@ import {
 } from "@/lib/supabase/client";
 import { DEFAULT_PROMO_POPUP } from "@/lib/promo-popup";
 import { PromoPopup } from "@/lib/types";
-
-/** Extract storage object path from a public thumbnails URL */
-function thumbnailsObjectPath(url: string | null | undefined): string | null {
-  if (!url) return null;
-  // Local sample — never delete from disk/storage
-  if (url.startsWith("/")) return null;
-
-  const marker = "/storage/v1/object/public/thumbnails/";
-  const idx = url.indexOf(marker);
-  if (idx === -1) return null;
-  const path = decodeURIComponent(url.slice(idx + marker.length).split("?")[0]);
-  return path || null;
-}
+import { thumbnailsObjectPath } from "@/lib/site-visuals";
 
 async function deleteStoredPromoImage(
   supabase: ReturnType<typeof createSupabaseAdminClient>,

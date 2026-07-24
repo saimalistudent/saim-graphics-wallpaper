@@ -5,6 +5,7 @@ import {
   optimizeImageBuffer,
   parseOptimizeKind,
 } from "@/lib/image-optimize";
+import { VISUALS_BUCKET, visualsObjectPath } from "@/lib/site-visuals";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -59,13 +60,14 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${optimized.ext}`;
+  const objectPath = visualsObjectPath(kind, optimized.ext);
 
   const { error: uploadError } = await supabase.storage
-    .from("thumbnails")
-    .upload(fileName, optimized.buffer, {
+    .from(VISUALS_BUCKET)
+    .upload(objectPath, optimized.buffer, {
       contentType: optimized.contentType,
       upsert: false,
+      cacheControl: "31536000",
     });
 
   if (uploadError) {
@@ -73,12 +75,13 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: urlData } = supabase.storage
-    .from("thumbnails")
-    .getPublicUrl(fileName);
+    .from(VISUALS_BUCKET)
+    .getPublicUrl(objectPath);
 
   return NextResponse.json({
     url: urlData.publicUrl,
     kind,
+    path: objectPath,
     bytes: optimized.buffer.byteLength,
   });
 }

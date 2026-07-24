@@ -6,15 +6,7 @@ import {
 } from "@/lib/supabase/client";
 import { DEFAULT_HERO_SLIDES } from "@/lib/hero-slides";
 import { HeroSlide } from "@/lib/types";
-
-function thumbnailsObjectPath(url: string | null | undefined): string | null {
-  if (!url || url.startsWith("/")) return null;
-  const marker = "/storage/v1/object/public/thumbnails/";
-  const idx = url.indexOf(marker);
-  if (idx === -1) return null;
-  const path = decodeURIComponent(url.slice(idx + marker.length).split("?")[0]);
-  return path || null;
-}
+import { thumbnailsObjectPath } from "@/lib/site-visuals";
 
 async function deleteStoredImage(
   supabase: ReturnType<typeof createSupabaseAdminClient>,

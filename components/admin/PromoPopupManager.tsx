@@ -79,7 +79,7 @@ export function PromoPopupManager() {
         image_url: data.url,
       });
       setPromo(saved);
-      setMessage("Nayi promo image save ho gayi — purani hata di.");
+      setMessage("Nayi promo CDN pe save — purani Supabase se delete.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {

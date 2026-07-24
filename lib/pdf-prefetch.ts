@@ -4,7 +4,6 @@ const PREFETCH_CACHE = "saim-pdf-prefetch-v1";
 const SMALL_PDF_MAX = 12 * 1024 * 1024;
 
 export function pdfApiUrlFor(fileId: string) {
-  // Path-based URL: Netlify CDN was ignoring ?id= and serving one PDF for all catalogs
   return `/api/drive-pdf/${encodeURIComponent(fileId.trim())}`;
 }
 
@@ -24,26 +23,30 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
 }
 
 /** Warm small PDFs only — never pull 35MB crown-room files into Cache API. */
-export function prefetchCatalogPdf(fileId: string) {
-  if (typeof window === "undefined" || !fileId) return;
-  const key = fileId.trim();
+export function prefetchCatalogPdf(
+  url: string,
+  knownBytes?: number | null
+) {
+  if (typeof window === "undefined" || !url) return;
+  const key = url.trim();
   const w = window as Window & { __saimPrefetch?: Set<string> };
   w.__saimPrefetch = w.__saimPrefetch || new Set();
   if (w.__saimPrefetch.has(key)) return;
   w.__saimPrefetch.add(key);
 
-  const url = pdfApiUrlFor(key);
   void (async () => {
     try {
-      // Probe size first — skip huge catalogs on mobile
-      const head = await fetch(url, { method: "HEAD", cache: "force-cache" });
-      const len = Number(head.headers.get("content-length") || 0);
-      // 0 = unknown / not cached yet — don't pull a possibly huge PDF into Cache API
-      if (!len || len > SMALL_PDF_MAX) return;
+      if (typeof knownBytes === "number" && knownBytes > 0) {
+        if (knownBytes > SMALL_PDF_MAX) return;
+      } else if (key.startsWith("/api/drive-pdf")) {
+        const head = await fetch(key, { method: "HEAD", cache: "force-cache" });
+        const len = Number(head.headers.get("content-length") || 0);
+        if (!len || len > SMALL_PDF_MAX) return;
+      }
 
       const cache = await caches.open(PREFETCH_CACHE);
-      if (await cache.match(url)) return;
-      await cache.add(url);
+      if (await cache.match(key)) return;
+      await cache.add(key);
     } catch {
       // ignore
     }
@@ -69,9 +72,7 @@ export async function readPrefetchedPdf(
       return null;
     }
 
-    // No Content-Length: peek only first bytes via clone stream if possible
     if (!len) {
-      // Avoid loading unknown huge bodies on mobile
       const isMobile =
         typeof navigator !== "undefined" &&
         /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);

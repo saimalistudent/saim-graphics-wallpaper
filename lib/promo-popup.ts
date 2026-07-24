@@ -49,11 +49,13 @@ export async function getActivePromoPopup(): Promise<PromoPopup | null> {
   return promo;
 }
 
-/** Same URL PromoPopup renders (cache-bust for local sample) */
+/** Same URL PromoPopup renders */
 export function promoImageSrc(imageUrl: string | null | undefined): string | null {
   const url = imageUrl?.trim() || null;
   if (!url) return null;
-  return url === "/promo-popup-sample.webp" || url === "/promo-popup-sample.png"
-    ? `/promo-popup-sample.webp?v=4`
-    : url;
+  // Local fallback only — CDN URLs pass through unchanged
+  if (url === "/promo-popup-sample.webp" || url === "/promo-popup-sample.png") {
+    return `/promo-popup-sample.webp?v=4`;
+  }
+  return url;
 }

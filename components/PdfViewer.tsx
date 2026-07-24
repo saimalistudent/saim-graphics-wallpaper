@@ -38,6 +38,7 @@ import {
   removeCachedPdf,
   setCachedPdf,
 } from "@/lib/pdf-local-cache";
+import { catalogPdfCacheKey, catalogPdfUrl } from "@/lib/pdf-url";
 import { readPrefetchedPdf } from "@/lib/pdf-prefetch";
 
 type PdfViewerProps = {
@@ -373,10 +374,16 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
   const whatsappUrl = phoneNumber
     ? buildWhatsAppUrl(phoneNumber, whatsappMessage)
     : null;
-  const downloadUrl = getDriveDownloadUrl(catalog.drive_file_id);
+  const downloadUrl = catalog.pdf_url?.trim()
+    ? catalog.pdf_url.trim()
+    : getDriveDownloadUrl(catalog.drive_file_id);
   const pdfApiUrl = useMemo(
-    () => `/api/drive-pdf/${encodeURIComponent(catalog.drive_file_id)}`,
-    [catalog.drive_file_id]
+    () => catalogPdfUrl(catalog),
+    [catalog]
+  );
+  const pdfCacheKey = useMemo(
+    () => catalogPdfCacheKey(catalog),
+    [catalog]
   );
 
   // Always fit stage width — zoom is CSS transform (no layout jump / no L-R free scroll at 1x)
@@ -582,6 +589,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
     let hintTimer: number | null = null;
     let tickTimer: number | null = null;
     const openedAt = Date.now();
+    const useDriveProxy = pdfApiUrl.startsWith("/api/drive-pdf");
 
     function finishOpen(opened: PDFDocumentProxy, isLarge: boolean) {
       if (hintTimer) window.clearInterval(hintTimer);
@@ -631,8 +639,8 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         verbosity: 0,
         disableAutoFetch: false,
         disableStream: false,
-        // Mobile: progressive full GET (hits cold stream) — avoids waiting on Range+full cache
-        disableRange: isMobileUa(),
+        // Stream from CDN (or Drive proxy). Range disabled only on Drive cold proxy.
+        disableRange: useDriveProxy && isMobileUa(),
         rangeChunkSize: isMobileUa() ? 65536 : 65536 * 2,
         ...pdfJsAssets(),
       });
@@ -672,7 +680,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
       ) {
         void fetchPdfWithProgress(pdfApiUrl, () => undefined)
           .then((data) => {
-            if (!cancelled) rememberPdf(catalog.drive_file_id, data);
+            if (!cancelled) rememberPdf(pdfCacheKey, data);
           })
           .catch(() => undefined);
       }
@@ -703,7 +711,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         doc,
         data.byteLength >= LARGE_PDF_BYTES || doc.numPages >= 20
       );
-      rememberPdf(catalog.drive_file_id, data);
+      rememberPdf(pdfCacheKey, data);
     }
 
     async function openPdf() {
@@ -738,7 +746,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
         });
       }, 700);
 
-      const fileId = catalog.drive_file_id;
+      const fileId = pdfCacheKey;
 
       try {
         const pdfjsReady = loadPdfJs();
@@ -836,7 +844,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
       }
       releasePdfDoc(doc);
     };
-  }, [pdfApiUrl, catalog.drive_file_id, scheduleQuality]);
+  }, [pdfApiUrl, pdfCacheKey, scheduleQuality]);
 
   // Auto load more pages while scrolling vertically
   useEffect(() => {
@@ -1173,7 +1181,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
                 />
               </div>
               <p className="pdf-loading-brand">SAIM GRAPHICS</p>
-              <p className="pdf-loading-wait">Please Wait</p>
+              <p className="pdf-loading-wait">Loading Designs...</p>
               <div
                 className="pdf-loading-bar"
                 role="progressbar"

@@ -18,10 +18,10 @@ export default async function SiteLayout({
     getHeroSlides(),
   ]);
 
-  // Only block splash on first 2 slides + promo — rest lazy-load after open
+  // Block splash only on first slide + promo — rest lazy after open
   const preloadSrcs = [
     promoImageSrc(promo?.image_url),
-    ...slides.slice(0, 2).map((s) => s.image_url),
+    slides[0]?.image_url,
   ];
 
   return (

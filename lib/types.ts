@@ -4,6 +4,12 @@ export type Catalog = {
   thumbnail_url: string | null;
   drive_file_id: string;
   created_at: string;
+  /** Public Supabase Storage URL — preferred over Drive proxy */
+  pdf_url?: string | null;
+  /** Object path inside catalog-pdfs bucket */
+  pdf_path?: string | null;
+  /** Byte size for prefetch decisions */
+  pdf_bytes?: number | null;
 };
 
 export type PdfView = {

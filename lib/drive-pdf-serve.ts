@@ -190,41 +190,6 @@ async function fetchFromDrive(fileId: string) {
   return res;
 }
 
-async function downloadAndCache(fileId: string, filePath: string) {
-  if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
-
-  const res = await fetchFromDrive(fileId);
-  if (!res.body) throw new Error("Empty Drive body");
-
-  const tmpPath = `${filePath}.part`;
-  try {
-    if (existsSync(tmpPath)) unlinkSync(tmpPath);
-  } catch {
-    // ignore
-  }
-
-  const nodeIn = Readable.fromWeb(
-    res.body as unknown as import("stream/web").ReadableStream
-  );
-  await pipeline(nodeIn, createWriteStream(tmpPath));
-
-  if (!isValidCachedPdf(tmpPath)) {
-    try {
-      unlinkSync(tmpPath);
-    } catch {
-      // ignore
-    }
-    throw new Error("Incomplete PDF download (retry)");
-  }
-
-  try {
-    if (existsSync(filePath)) unlinkSync(filePath);
-  } catch {
-    // ignore
-  }
-  renameSync(tmpPath, filePath);
-}
-
 /**
  * Stream Drive PDF to the client immediately while writing /tmp cache.
  * First byte reaches the phone without waiting for the full Drive download.
