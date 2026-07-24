@@ -11,7 +11,7 @@ export default function AdminPromoPage() {
         <div>
           <h1 className="admin-page-title">Promo Popup</h1>
           <p className="admin-page-sub">
-            Offer image upload karein — website pe 3 seconds baad dikhegi
+            Offer image shown on the website after a short delay
           </p>
         </div>
       </div>

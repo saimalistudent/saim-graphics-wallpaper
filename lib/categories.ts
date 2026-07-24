@@ -31,8 +31,9 @@ export async function getCatalogCategories(): Promise<CatalogCategory[]> {
       .eq("enabled", true)
       .order("sort_order", { ascending: true });
 
-    if (error || !data?.length) return DEFAULT_CATEGORIES;
-    return data as CatalogCategory[];
+    // Table missing / misconfigured → local fallbacks for first paint
+    if (error) return DEFAULT_CATEGORIES;
+    return (data ?? []) as CatalogCategory[];
   } catch {
     return DEFAULT_CATEGORIES;
   }

@@ -56,8 +56,8 @@ export function CatalogsBrowser({ catalogs, categories }: Props) {
 
       {filtered.length === 0 ? (
         <div className="text-center py-14 text-text-secondary">
-          <p className="text-lg">Is category mein abhi koi design nahi.</p>
-          <p className="mt-2 text-sm">ALL select karke saari collections dekhein.</p>
+          <p className="text-lg">No designs in this category yet.</p>
+          <p className="mt-2 text-sm">Select ALL to browse every collection.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 items-stretch">

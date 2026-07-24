@@ -1,9 +1,9 @@
 import { FadeUp } from "@/components/FadeUp";
 
 const steps = [
-  { num: "01", title: "Browse", hint: "Catalogs kholo" },
-  { num: "02", title: "Choose", hint: "Design pasand karo" },
-  { num: "03", title: "WhatsApp", hint: "Screenshot bhejo" },
+  { num: "01", title: "Browse", hint: "Open a catalog" },
+  { num: "02", title: "Choose", hint: "Pick your design" },
+  { num: "03", title: "WhatsApp", hint: "Send a screenshot" },
 ];
 
 export function HowItWorks() {

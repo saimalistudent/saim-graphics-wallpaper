@@ -18,7 +18,7 @@ export function PromoPopupManager() {
     void (async () => {
       try {
         const res = await fetch("/api/admin/promo");
-        if (!res.ok) throw new Error("Promo load nahi hui");
+        if (!res.ok) throw new Error("Failed to load promo");
         const data = (await res.json()) as PromoPopup & { _warning?: string };
         if (cancelled) return;
         setPromo({
@@ -29,7 +29,7 @@ export function PromoPopupManager() {
         });
         if (data._warning) {
           setError(
-            "Supabase mein 002_promo_popup.sql migration run karein — abhi sample image use ho rahi hai."
+            "Run 002_promo_popup.sql in Supabase — using sample image for now."
           );
         }
       } catch (e) {
@@ -79,7 +79,7 @@ export function PromoPopupManager() {
         image_url: data.url,
       });
       setPromo(saved);
-      setMessage("Nayi promo CDN pe save — purani Supabase se delete.");
+      setMessage("Promo image saved to CDN.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -90,7 +90,7 @@ export function PromoPopupManager() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (!promo.image_url?.trim()) {
-      setError("Pehle popup image upload karein.");
+      setError("Upload a popup image first.");
       return;
     }
     setSaving(true);
@@ -102,7 +102,7 @@ export function PromoPopupManager() {
         image_url: promo.image_url,
       });
       setPromo(saved);
-      setMessage("Promo popup save ho gaya.");
+      setMessage("Promo popup saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -128,11 +128,13 @@ export function PromoPopupManager() {
             }
             className="h-4 w-4 accent-[#4A0404]"
           />
-          Popup website pe show ho
+          Show popup on website
         </label>
 
         <div>
-          <label className="admin-label">Popup image (2:3 ratio best — auto HD WebP)</label>
+          <label className="admin-label">
+            Popup image (2:3 ratio best — auto HD WebP)
+          </label>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
@@ -146,7 +148,7 @@ export function PromoPopupManager() {
           <p className="mt-1.5 text-xs text-text-secondary">
             {uploading
               ? "Uploading & replacing…"
-              : "Nayi image select karo — purani auto delete ho jayegi"}
+              : "Select a new image to replace the current one"}
           </p>
         </div>
 

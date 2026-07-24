@@ -17,13 +17,11 @@ export function HeroSlidesManager() {
     void (async () => {
       try {
         const res = await fetch("/api/admin/hero-slides");
-        if (!res.ok) throw new Error("Slides load nahi huin");
+        if (!res.ok) throw new Error("Failed to load slides");
         const data = await res.json();
         if (cancelled) return;
         if (data._warning) {
-          setError(
-            "Supabase mein 003_hero_slides.sql migration run karein — abhi local images use ho rahi hain."
-          );
+          setError("Run 003_hero_slides.sql in Supabase.");
           setSlides(data.slides ?? DEFAULT_HERO_SLIDES);
         } else {
           setSlides(
@@ -77,7 +75,7 @@ export function HeroSlidesManager() {
           s.sort_order === slide.sort_order ? (data as HeroSlide) : s
         )
       );
-      setMessage(`Slide ${slide.sort_order} CDN pe update — purani delete.`);
+      setMessage(`Slide ${slide.sort_order} updated.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Update failed");
     } finally {
@@ -90,10 +88,12 @@ export function HeroSlidesManager() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch("/api/admin/site-visuals/sync", { method: "POST" });
+      const res = await fetch("/api/admin/site-visuals/sync", {
+        method: "POST",
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "CDN sync fail");
-      setMessage("Hero + promo visuals Supabase CDN pe ready.");
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      setMessage("Hero + promo synced to CDN.");
       const reload = await fetch("/api/admin/hero-slides");
       if (reload.ok) {
         const body = await reload.json();
@@ -106,14 +106,14 @@ export function HeroSlidesManager() {
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "CDN sync fail");
+      setError(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setSyncing(false);
     }
   }
 
   if (loading) {
-    return <p className="text-text-secondary text-sm">Loading slides…</p>;
+    return <p className="text-text-secondary text-sm">Loading…</p>;
   }
 
   return (
@@ -121,14 +121,14 @@ export function HeroSlidesManager() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          className="golden-button text-sm"
+          className="golden-button text-sm whitespace-nowrap px-4"
           disabled={syncing}
           onClick={() => void syncAllToCdn()}
         >
-          {syncing ? "CDN sync…" : "Push slides + promo → Supabase CDN"}
+          {syncing ? "Syncing…" : "Sync to CDN"}
         </button>
         <p className="text-xs text-text-secondary">
-          Local / pehli baar: CDN pe bhejo. Change pe purani auto delete.
+          Uploads hero slides and promo image to Supabase.
         </p>
       </div>
       {error && (
@@ -171,9 +171,7 @@ export function HeroSlidesManager() {
                 className="admin-input file:mr-3 file:rounded-md file:border-0 file:bg-gold/15 file:px-3 file:py-1.5 file:text-sm file:text-burgundy"
               />
               <p className="text-xs text-text-secondary">
-                {busyId === slide.id
-                  ? "Uploading… (HD WebP → Supabase)"
-                  : "Nayi image = Supabase CDN + purani delete"}
+                {busyId === slide.id ? "Uploading…" : "Replace image"}
               </p>
             </div>
           ))}

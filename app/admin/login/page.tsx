@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
           Admin Login
         </h1>
         <p className="mt-2 text-center text-sm text-text-secondary">
-          Password dal kar Sign In karein
+          Enter your password to continue
         </p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>

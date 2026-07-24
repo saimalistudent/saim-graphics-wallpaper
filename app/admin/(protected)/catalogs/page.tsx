@@ -11,7 +11,7 @@ export default function AdminCatalogsPage() {
         <div>
           <h1 className="admin-page-title">Catalog Manager</h1>
           <p className="admin-page-sub">
-            PDF catalogs add, edit ya delete karein — simple 3 steps
+            Add, edit, or delete PDF catalogs
           </p>
         </div>
       </div>

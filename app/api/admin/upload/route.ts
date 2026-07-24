@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
 
   if (!ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json(
-      { error: "Sirf JPG, PNG, WEBP photo upload karein" },
+      { error: "Upload JPG, PNG, or WEBP only" },
       { status: 400 }
     );
   }
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: "Photo 12MB se chhoti honi chahiye" },
+      { error: "Image must be under 12MB" },
       { status: 400 }
     );
   }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     optimized = await optimizeImageBuffer(input, kind);
   } catch {
     return NextResponse.json(
-      { error: "Image optimize fail — dusri photo try karein" },
+      { error: "Image optimize failed — try another photo" },
       { status: 400 }
     );
   }

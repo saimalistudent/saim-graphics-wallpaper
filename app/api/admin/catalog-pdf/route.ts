@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import {
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
         error:
           e instanceof Error
             ? e.message
-            : "catalog-pdfs bucket create fail — Supabase Storage check karein",
+            : "catalog-pdfs bucket create failed — check Supabase Storage",
       },
       { status: 500 }
     );
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
   if (bytes > 50 * 1024 * 1024) {
     return NextResponse.json(
-      { error: "PDF 50MB se chhoti honi chahiye" },
+      { error: "PDF must be under 50MB" },
       { status: 400 }
     );
   }
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   if (catErr || !catalog) {
     return NextResponse.json(
-      { error: catErr?.message || "Catalog nahi mili" },
+      { error: catErr?.message || "Catalog not found" },
       { status: 404 }
     );
   }
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message || "Signed URL fail" },
+      { error: error?.message || "Signed URL failed" },
       { status: 500 }
     );
   }
@@ -110,7 +111,7 @@ export async function PUT(request: NextRequest) {
 
   if (catErr || !catalog) {
     return NextResponse.json(
-      { error: catErr?.message || "Catalog nahi mili" },
+      { error: catErr?.message || "Catalog not found" },
       { status: 404 }
     );
   }
@@ -162,7 +163,7 @@ export async function PUT(request: NextRequest) {
       {
         error:
           updErr.message +
-          " — pehle Supabase mein 004_catalog_pdf_storage.sql run karein",
+          " — run 004_catalog_pdf_storage.sql in Supabase first",
       },
       { status: 500 }
     );
@@ -173,6 +174,8 @@ export async function PUT(request: NextRequest) {
     await deleteStorageObject(PDF_BUCKET, oldPath);
   }
 
+  revalidatePath("/catalogs");
+  revalidatePath("/");
   return NextResponse.json(updated);
 }
 
@@ -197,7 +200,7 @@ export async function DELETE(request: NextRequest) {
 
   if (catErr || !catalog) {
     return NextResponse.json(
-      { error: catErr?.message || "Catalog nahi mili" },
+      { error: catErr?.message || "Catalog not found" },
       { status: 404 }
     );
   }
@@ -225,5 +228,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
+  revalidatePath("/catalogs");
+  revalidatePath("/");
   return NextResponse.json(updated);
 }

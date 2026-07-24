@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import {
   Playfair_Display,
   Inter,
-  Noto_Sans_Arabic,
   Oswald,
   Cinzel,
 } from "next/font/google";
@@ -33,13 +32,6 @@ const cinzel = Cinzel({
   display: "swap",
 });
 
-const urdu = Noto_Sans_Arabic({
-  subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-urdu",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "SAIM GRAPHICS | 3D PANAFLEX WALLPAPER",
   description:
@@ -62,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${inter.variable} ${oswald.variable} ${cinzel.variable} ${urdu.variable} antialiased min-h-screen flex flex-col`}
+        className={`${playfair.variable} ${inter.variable} ${oswald.variable} ${cinzel.variable} antialiased min-h-screen flex flex-col`}
       >
         {children}
       </body>

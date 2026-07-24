@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     : extractDriveFileId(rawDrive);
   if (!fileId || fileId.length < 10) {
     return NextResponse.json(
-      { error: "Invalid Google Drive file ID / link (ya PDF file choose karein)" },
+      { error: "Invalid Google Drive link — or upload a PDF file" },
       { status: 400 }
     );
   }
@@ -73,6 +74,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidatePath("/catalogs");
+  revalidatePath("/");
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -97,7 +100,7 @@ export async function PUT(request: NextRequest) {
     : extractDriveFileId(rawDrive);
   if (!fileId || fileId.length < 10) {
     return NextResponse.json(
-      { error: "Invalid Google Drive file ID / link (ya PDF file choose karein)" },
+      { error: "Invalid Google Drive link — or upload a PDF file" },
       { status: 400 }
     );
   }
@@ -129,6 +132,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidatePath("/catalogs");
+  revalidatePath("/");
   return NextResponse.json(data);
 }
 
@@ -170,5 +175,7 @@ export async function DELETE(request: NextRequest) {
     await deleteStorageObject(THUMB_BUCKET, thumbPath);
   }
 
+  revalidatePath("/catalogs");
+  revalidatePath("/");
   return NextResponse.json({ success: true });
 }

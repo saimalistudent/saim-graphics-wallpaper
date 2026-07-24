@@ -64,7 +64,7 @@ export function Hero({ slides }: Props) {
             <span className="hero-cta-icon" aria-hidden>
               <Images className="h-3.5 w-3.5" strokeWidth={2.25} />
             </span>
-              <span>View All Wallpaper Design</span>
+              <span>View All Designs</span>
           </Link>
 
           <p className="hero-motto">

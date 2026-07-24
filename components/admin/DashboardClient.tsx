@@ -29,7 +29,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   async function resetStats() {
     if (
       !confirm(
-        "Saari website visits aur PDF open stats 0 pe reset ho jayengi. Confirm?"
+        "Reset all website visits and PDF open counts to 0? This cannot be undone."
       )
     ) {
       return;
@@ -40,11 +40,11 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     try {
       const res = await fetch("/api/admin/stats/reset", { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Reset fail");
-      setMessage("Stats reset ho gayi — ab 0 se shuru.");
+      if (!res.ok) throw new Error(data.error || "Reset failed");
+      setMessage("Stats reset to 0.");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Reset fail");
+      setError(err instanceof Error ? err.message : "Reset failed");
     } finally {
       setResetting(false);
     }
@@ -54,7 +54,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
-          Live counts — reset se pehle wale records delete ho jate hain.
+          Live counts — reset deletes previous visit records.
         </p>
         <button
           type="button"
@@ -128,7 +128,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
         <h2 className="admin-card-title mb-4">Most Viewed Catalogs</h2>
         {stats.mostViewed.length === 0 ? (
           <p className="text-text-secondary text-sm">
-            Abhi koi catalog view nahi hua.
+            No catalog views yet.
           </p>
         ) : (
           <div className="overflow-x-auto">
