@@ -10,6 +10,17 @@ export type Catalog = {
   pdf_path?: string | null;
   /** Byte size for prefetch decisions */
   pdf_bytes?: number | null;
+  /** Optional design category (BED, ROOM, …) */
+  category_id?: string | null;
+};
+
+export type CatalogCategory = {
+  id: string;
+  name: string;
+  sort_order: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type PdfView = {

@@ -21,12 +21,15 @@ export function usePageReady() {
   return useContext(PageReadyContext);
 }
 
-/** Brief brand beat after critical visuals — keep under ~1s on normal nets */
-const MIN_LOADER_MS = 160;
-/** Only show slow-net tip after this wait (fast nets finish earlier) */
-const SLOW_HINT_MS = 1800;
-/** Hard safety so a broken image never traps the user forever */
-const MAX_WAIT_MS = 4500;
+/** Brief brand beat after visuals are ready */
+const MIN_LOADER_MS = 220;
+/** Only show slow-net tip after this wait */
+const SLOW_HINT_MS = 2500;
+/**
+ * Absolute last resort — do NOT force-reveal early.
+ * Broken image URLs already resolve in preloadImage (onerror).
+ */
+const MAX_WAIT_MS = 28000;
 
 const SLOW_NET_TIP = "MAKE SURE YOUR INTERNET SPEED IS FAST";
 
@@ -152,7 +155,7 @@ export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
     setShowSlowTip(false);
 
     let cancelled = false;
-    // Don't wait for full window "load" (fonts/analytics) — interactive + visuals is enough
+    // Wait for DOM interactive + ALL critical visuals decoded
     let pageLoaded =
       document.readyState === "complete" ||
       document.readyState === "interactive";
@@ -205,18 +208,17 @@ export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
       });
     }
 
-    // Fast nets usually finish before this — tip never appears.
-    // Known-slow connections get the tip earlier; otherwise only if still waiting.
-    const hintDelay = isLikelySlowNetwork() ? 1600 : SLOW_HINT_MS;
+    const hintDelay = isLikelySlowNetwork() ? 1800 : SLOW_HINT_MS;
     const slowHintTimer = window.setTimeout(() => {
       if (cancelled || finished) return;
       setShowSlowTip(true);
     }, hintDelay);
 
-    // Last resort only — broken URLs must not lock the splash forever
+    // Only unlock page shell if still stuck — never skip waiting for visuals early
     const safetyTimer = window.setTimeout(() => {
       if (cancelled || finished) return;
       pageLoaded = true;
+      // If assets still pending after 20s, force so a hung decode can't trap forever
       assetsReady = true;
       tryFinish();
     }, MAX_WAIT_MS);

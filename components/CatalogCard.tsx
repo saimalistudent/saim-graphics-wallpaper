@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Catalog } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
@@ -29,7 +28,6 @@ type CatalogCardProps = {
 function buildDriveCandidates(fileId: string, preferred?: string | null) {
   const list = [
     preferred?.trim() || null,
-    // Mobile-first: smaller thumbs first (HD enough for card size)
     getDriveThumbnailUrl(fileId, 400),
     getDriveThumbnailFallbackUrl(fileId, 400),
     getDriveThumbnailUrl(fileId, 640),
@@ -86,7 +84,6 @@ export function CatalogCard({
   function handleSelect() {
     setSelected(true);
     rememberCatalogScroll(pathname || "/catalogs", catalog.id);
-    // Warm cache in background only if missing — do not compete with open
     if (fileId) {
       prefetchCatalogPdf(catalogPdfUrl(catalog), catalog.pdf_bytes);
     }
@@ -112,30 +109,20 @@ export function CatalogCard({
           >
             {thumbSrc ? (
               <>
-                {isDriveAuto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={thumbSrc}
-                    src={thumbSrc}
-                    alt={catalog.title}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading={index < 4 ? "eager" : "lazy"}
-                    decoding="async"
-                    referrerPolicy="no-referrer"
-                    onError={handleThumbError}
-                  />
-                ) : (
-                  <Image
-                    key={thumbSrc}
-                    src={thumbSrc}
-                    alt={catalog.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 22vw"
-                    quality={85}
-                    onError={handleThumbError}
-                  />
-                )}
+                {/* Plain img so PageLoader preload URL matches (no /_next/image miss) */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  key={thumbSrc}
+                  src={thumbSrc}
+                  alt={catalog.title}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="eager"
+                  decoding="sync"
+                  fetchPriority={index < 8 ? "high" : "low"}
+                  referrerPolicy={isDriveAuto ? "no-referrer" : undefined}
+                  draggable={false}
+                  onError={handleThumbError}
+                />
                 {pageBadge && (
                   <span className="catalog-auto-badge">
                     <Sparkles className="h-2 w-2" />

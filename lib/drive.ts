@@ -67,7 +67,10 @@ export function resolveCatalogThumbnail(
   if (uploadedThumb && uploadedThumb.trim()) {
     return uploadedThumb.trim();
   }
-  return getDriveThumbnailUrl(extractDriveFileId(driveFileId));
+  const id = extractDriveFileId(driveFileId);
+  // Manual PDF-only catalogs — preview comes from CDN after upload
+  if (id.startsWith("manual-pdf-")) return "";
+  return getDriveThumbnailUrl(id);
 }
 
 export function extractDriveFileId(input: string): string {

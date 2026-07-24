@@ -34,29 +34,37 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { title, drive_file_id, thumbnail_url } = body;
+  const { title, drive_file_id, thumbnail_url, category_id } = body;
 
   if (!title || !drive_file_id) {
     return NextResponse.json(
-      { error: "Title and Drive file ID are required" },
+      { error: "Title and Drive file ID / PDF upload required" },
       { status: 400 }
     );
   }
 
-  const fileId = extractDriveFileId(String(drive_file_id));
+  const rawDrive = String(drive_file_id).trim();
+  const fileId = rawDrive.startsWith("manual-pdf-")
+    ? rawDrive
+    : extractDriveFileId(rawDrive);
   if (!fileId || fileId.length < 10) {
     return NextResponse.json(
-      { error: "Invalid Google Drive file ID / link" },
+      { error: "Invalid Google Drive file ID / link (ya PDF file choose karein)" },
       { status: 400 }
     );
   }
   const supabase = createSupabaseAdminClient();
+  const catId =
+    typeof category_id === "string" && category_id.trim()
+      ? category_id.trim()
+      : null;
   const { data, error } = await supabase
     .from("catalogs")
     .insert({
       title,
       drive_file_id: fileId,
-      thumbnail_url: resolveCatalogThumbnail(fileId, thumbnail_url),
+      thumbnail_url: resolveCatalogThumbnail(fileId, thumbnail_url) || null,
+      category_id: catId,
     })
     .select()
     .single();
@@ -74,7 +82,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { id, title, drive_file_id, thumbnail_url } = body;
+  const { id, title, drive_file_id, thumbnail_url, category_id } = body;
 
   if (!id || !title || !drive_file_id) {
     return NextResponse.json(
@@ -83,21 +91,36 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  const fileId = extractDriveFileId(String(drive_file_id));
+  const rawDrive = String(drive_file_id).trim();
+  const fileId = rawDrive.startsWith("manual-pdf-")
+    ? rawDrive
+    : extractDriveFileId(rawDrive);
   if (!fileId || fileId.length < 10) {
     return NextResponse.json(
-      { error: "Invalid Google Drive file ID / link" },
+      { error: "Invalid Google Drive file ID / link (ya PDF file choose karein)" },
       { status: 400 }
     );
   }
   const supabase = createSupabaseAdminClient();
+
+  const updates: Record<string, unknown> = {
+    title,
+    drive_file_id: fileId,
+  };
+  if (thumbnail_url !== undefined) {
+    updates.thumbnail_url =
+      resolveCatalogThumbnail(fileId, thumbnail_url) || null;
+  }
+  if (category_id !== undefined) {
+    updates.category_id =
+      typeof category_id === "string" && category_id.trim()
+        ? category_id.trim()
+        : null;
+  }
+
   const { data, error } = await supabase
     .from("catalogs")
-    .update({
-      title,
-      drive_file_id: fileId,
-      thumbnail_url: resolveCatalogThumbnail(fileId, thumbnail_url),
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
@@ -124,7 +147,7 @@ export async function DELETE(request: NextRequest) {
   const supabase = createSupabaseAdminClient();
   const { data: existing } = await supabase
     .from("catalogs")
-    .select("pdf_path")
+    .select("pdf_path, thumbnail_url")
     .eq("id", id)
     .maybeSingle();
 
@@ -134,11 +157,17 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const { deleteCatalogPdfObjects, deleteStorageObject, THUMB_BUCKET } =
+    await import("@/lib/catalog-pdf-storage");
+  const { thumbnailsObjectPath } = await import("@/lib/site-visuals");
+
+  await deleteCatalogPdfObjects(id);
   if (existing?.pdf_path) {
-    const { deleteStorageObject, PDF_BUCKET } = await import(
-      "@/lib/catalog-pdf-storage"
-    );
-    await deleteStorageObject(PDF_BUCKET, existing.pdf_path as string);
+    await deleteStorageObject("catalog-pdfs", existing.pdf_path as string);
+  }
+  const thumbPath = thumbnailsObjectPath(existing?.thumbnail_url as string);
+  if (thumbPath?.startsWith("catalog-previews/")) {
+    await deleteStorageObject(THUMB_BUCKET, thumbPath);
   }
 
   return NextResponse.json({ success: true });

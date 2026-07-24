@@ -50,75 +50,99 @@ export function PromoPopup({ promo }: Props) {
   if (!displaySrc) return null;
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="promo-popup-root"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            duration: prefersReducedMotion ? 0.18 : 0.45,
-            ease: "easeOut",
-          }}
-          role="presentation"
-        >
-          <motion.button
-            type="button"
-            className="promo-popup-backdrop"
-            aria-label="Close offer"
-            onClick={() => setOpen(false)}
+    <>
+      {/* Keep decoded in memory before dialog opens — no pop-in paint */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={displaySrc}
+        alt=""
+        aria-hidden
+        decoding="sync"
+        fetchPriority="high"
+        draggable={false}
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      />
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="promo-popup-root"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-          />
-
-          <motion.div
-            className="promo-popup-shell"
-            initial={
-              prefersReducedMotion
-                ? { opacity: 1, scale: 1 }
-                : { opacity: 0, scale: 0.88, y: 28 }
-            }
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={
-              prefersReducedMotion
-                ? { opacity: 0 }
-                : { opacity: 0, scale: 0.94, y: 12 }
-            }
             transition={{
-              duration: prefersReducedMotion ? 0.2 : 0.55,
-              ease: [0.16, 1, 0.3, 1],
+              duration: prefersReducedMotion ? 0.18 : 0.45,
+              ease: "easeOut",
             }}
+            role="presentation"
           >
-            <button
+            <motion.button
               type="button"
-              className="promo-popup-close"
-              aria-label="Close"
+              className="promo-popup-backdrop"
+              aria-label="Close offer"
               onClick={() => setOpen(false)}
-            >
-              <X className="promo-popup-close-icon" strokeWidth={2.25} />
-            </button>
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+            />
 
-            <div
-              className="promo-popup-card"
-              role="dialog"
-              aria-modal="true"
-              aria-label={promo.title.trim() || "Offer"}
+            <motion.div
+              className="promo-popup-shell"
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 1, scale: 1 }
+                  : { opacity: 0, scale: 0.88, y: 28 }
+              }
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, scale: 0.94, y: 12 }
+              }
+              transition={{
+                duration: prefersReducedMotion ? 0.2 : 0.55,
+                ease: [0.16, 1, 0.3, 1],
+              }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={displaySrc}
-                alt={promo.title.trim() || "Offer"}
-                className="promo-popup-image"
-                decoding="async"
-                draggable={false}
-              />
-            </div>
+              <button
+                type="button"
+                className="promo-popup-close"
+                aria-label="Close"
+                onClick={() => setOpen(false)}
+              >
+                <X className="promo-popup-close-icon" strokeWidth={2.25} />
+              </button>
+
+              <div
+                className="promo-popup-card"
+                role="dialog"
+                aria-modal="true"
+                aria-label={promo.title.trim() || "Offer"}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={displaySrc}
+                  alt={promo.title.trim() || "Offer"}
+                  className="promo-popup-image"
+                  decoding="sync"
+                  fetchPriority="high"
+                  draggable={false}
+                />
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

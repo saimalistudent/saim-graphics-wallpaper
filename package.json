@@ -9,7 +9,9 @@
     "lint": "next lint",
     "seed": "tsx scripts/seed-catalogs.ts",
     "migrate:pdfs": "tsx scripts/migrate-drive-to-storage.ts",
-    "migrate:visuals": "tsx scripts/migrate-site-visuals-to-storage.ts"
+    "migrate:visuals": "tsx scripts/migrate-site-visuals-to-storage.ts",
+    "restore:pdfs": "tsx scripts/restore-original-pdfs.ts",
+    "compress:visuals": "tsx scripts/compress-site-visuals.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

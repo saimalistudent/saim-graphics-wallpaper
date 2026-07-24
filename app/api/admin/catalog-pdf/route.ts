@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
-import { isAutoDriveThumbnail } from "@/lib/drive";
 import {
   PDF_BUCKET,
   cacheDriveFirstPageThumb,
@@ -124,34 +123,31 @@ export async function PUT(request: NextRequest) {
     pdf_bytes: bytes > 0 ? bytes : null,
   };
 
-  // Phase 4: first-page preview → our CDN when still on Drive auto thumb / empty
-  const needsThumb =
-    !catalog.thumbnail_url || isAutoDriveThumbnail(catalog.thumbnail_url);
-
-  if (needsThumb) {
-    let thumbUrl =
-      (await cacheDriveFirstPageThumb(catalog.drive_file_id, catalogId)) ||
-      null;
-
-    if (!thumbUrl) {
-      try {
-        const { data: fileData, error: dlErr } = await supabase.storage
-          .from(PDF_BUCKET)
-          .download(path);
-        if (!dlErr && fileData) {
-          const buf = Buffer.from(await fileData.arrayBuffer());
-          // Only try render on modest files to protect function memory
-          if (buf.byteLength <= 18 * 1024 * 1024) {
-            const webp = await renderPdfFirstPageWebp(buf);
-            if (webp) thumbUrl = await uploadFirstPageWebp(catalogId, webp);
-          }
-        }
-      } catch {
-        // ignore — Drive/auto thumb remains
+  // After manual PDF upload: build display-sized CDN preview (PDF itself stays as uploaded)
+  let thumbUrl: string | null = null;
+  try {
+    const { data: fileData, error: dlErr } = await supabase.storage
+      .from(PDF_BUCKET)
+      .download(path);
+    if (!dlErr && fileData) {
+      const buf = Buffer.from(await fileData.arrayBuffer());
+      if (buf.byteLength <= 40 * 1024 * 1024) {
+        const webp = await renderPdfFirstPageWebp(buf);
+        if (webp) thumbUrl = await uploadFirstPageWebp(catalogId, webp);
       }
     }
+  } catch {
+    // ignore
+  }
 
-    if (thumbUrl) updates.thumbnail_url = thumbUrl;
+  if (!thumbUrl) {
+    thumbUrl =
+      (await cacheDriveFirstPageThumb(catalog.drive_file_id, catalogId)) ||
+      null;
+  }
+
+  if (thumbUrl) {
+    updates.thumbnail_url = thumbUrl;
   }
 
   const { data: updated, error: updErr } = await supabase
@@ -175,6 +171,58 @@ export async function PUT(request: NextRequest) {
   const oldPath = previousPath || catalog.pdf_path;
   if (oldPath && oldPath !== path) {
     await deleteStorageObject(PDF_BUCKET, oldPath);
+  }
+
+  return NextResponse.json(updated);
+}
+
+/** Remove CDN PDF from Storage + clear pdf_* fields (catalog row stays). */
+export async function DELETE(request: NextRequest) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const catalogId = searchParams.get("catalogId")?.trim() || "";
+  if (!catalogId) {
+    return NextResponse.json({ error: "catalogId required" }, { status: 400 });
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data: catalog, error: catErr } = await supabase
+    .from("catalogs")
+    .select("id, pdf_path, pdf_url")
+    .eq("id", catalogId)
+    .maybeSingle();
+
+  if (catErr || !catalog) {
+    return NextResponse.json(
+      { error: catErr?.message || "Catalog nahi mili" },
+      { status: 404 }
+    );
+  }
+
+  const { deleteCatalogPdfObjects, deleteStorageObject } = await import(
+    "@/lib/catalog-pdf-storage"
+  );
+  await deleteCatalogPdfObjects(catalogId);
+  if (catalog.pdf_path) {
+    await deleteStorageObject(PDF_BUCKET, catalog.pdf_path as string);
+  }
+
+  const { data: updated, error: updErr } = await supabase
+    .from("catalogs")
+    .update({
+      pdf_url: null,
+      pdf_path: null,
+      pdf_bytes: null,
+    })
+    .eq("id", catalogId)
+    .select("*")
+    .single();
+
+  if (updErr) {
+    return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
   return NextResponse.json(updated);

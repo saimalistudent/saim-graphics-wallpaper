@@ -10,19 +10,74 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { DashboardStats } from "@/lib/types";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, FileText } from "lucide-react";
+import { Eye, FileText, RotateCcw } from "lucide-react";
 
 type DashboardClientProps = {
   stats: DashboardStats;
 };
 
 export function DashboardClient({ stats }: DashboardClientProps) {
+  const router = useRouter();
   const [days, setDays] = useState<7 | 30>(30);
+  const [resetting, setResetting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const chartData = stats.visitsByDay.slice(-days);
+
+  async function resetStats() {
+    if (
+      !confirm(
+        "Saari website visits aur PDF open stats 0 pe reset ho jayengi. Confirm?"
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/stats/reset", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Reset fail");
+      setMessage("Stats reset ho gayi — ab 0 se shuru.");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reset fail");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-text-secondary">
+          Live counts — reset se pehle wale records delete ho jate hain.
+        </p>
+        <button
+          type="button"
+          onClick={() => void resetStats()}
+          disabled={resetting}
+          className="admin-chip-danger inline-flex items-center gap-1.5"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          {resetting ? "Resetting…" : "Reset stats to 0"}
+        </button>
+      </div>
+
+      {message && (
+        <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard
           icon={<Eye className="h-5 w-5" />}
@@ -72,20 +127,28 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       <div className="admin-card">
         <h2 className="admin-card-title mb-4">Most Viewed Catalogs</h2>
         {stats.mostViewed.length === 0 ? (
-          <p className="text-text-secondary text-sm">Abhi koi catalog view nahi hua.</p>
+          <p className="text-text-secondary text-sm">
+            Abhi koi catalog view nahi hua.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-burgundy/10 text-left">
-                  <th className="py-3 pr-4 font-medium text-burgundy">Catalog</th>
-                  <th className="py-3 font-medium text-burgundy text-right">Views</th>
+                  <th className="py-3 pr-4 font-medium text-burgundy">
+                    Catalog
+                  </th>
+                  <th className="py-3 font-medium text-burgundy text-right">
+                    Views
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {stats.mostViewed.map((catalog) => (
                   <tr key={catalog.id} className="border-b border-burgundy/5">
-                    <td className="py-3 pr-4 text-[#1a1a1a]">{catalog.title}</td>
+                    <td className="py-3 pr-4 text-[#1a1a1a]">
+                      {catalog.title}
+                    </td>
                     <td className="py-3 text-right text-gold font-semibold">
                       {catalog.view_count}
                     </td>
@@ -115,7 +178,9 @@ function StatCard({
         <p className="text-sm text-white/75">{label}</p>
         <span className="text-gold-light">{icon}</span>
       </div>
-      <p className="mt-3 font-heading text-3xl font-bold text-gold-light">{value}</p>
+      <p className="mt-3 font-heading text-3xl font-bold text-gold-light">
+        {value}
+      </p>
     </div>
   );
 }

@@ -2,18 +2,23 @@ import sharp from "sharp";
 
 export type ImageOptimizeKind = "hero" | "promo" | "thumb" | "logo";
 
-/** Display-aware caps — 2–3× CSS size so retina stays sharp, not soft */
+/**
+ * Caps match on-screen CSS × ~3 (retina). Bigger uploads get shrunk;
+ * never upscale. Keeps designs sharp without multi-MB CDN files.
+ */
 const KIND_MAX_WIDTH: Record<ImageOptimizeKind, number> = {
-  hero: 640,
-  promo: 1080,
-  thumb: 800,
-  logo: 256,
+  // .hero-marquee-slide ≈ 8.25rem (~132px) → 3× ≈ 396
+  hero: 420,
+  // .promo-popup-card ≈ 21.5rem (~344px) → ~2.8× for crisp popup
+  promo: 960,
+  thumb: 720,
+  logo: 192,
 };
 
 const KIND_QUALITY: Record<ImageOptimizeKind, number> = {
-  hero: 90,
-  promo: 90,
-  thumb: 88,
+  hero: 86,
+  promo: 88,
+  thumb: 86,
   logo: 90,
 };
 
@@ -41,7 +46,7 @@ export async function optimizeImageBuffer(
       withoutEnlargement: true,
       fit: "inside",
     })
-    .webp({ quality, effort: 4 })
+    .webp({ quality, effort: 5 })
     .toBuffer();
 
   return { buffer, contentType: "image/webp", ext: "webp" };

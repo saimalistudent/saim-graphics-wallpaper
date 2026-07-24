@@ -10,6 +10,7 @@ import { ExternalLink } from "lucide-react";
 const adminLinks = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/catalogs", label: "Catalogs" },
+  { href: "/admin/categories", label: "Categories" },
   { href: "/admin/promo", label: "Promo" },
   { href: "/admin/hero", label: "Hero" },
 ];

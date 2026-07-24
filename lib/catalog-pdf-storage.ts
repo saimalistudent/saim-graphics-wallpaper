@@ -127,3 +127,22 @@ export async function deleteStorageObject(
   const supabase = createSupabaseAdminClient();
   await supabase.storage.from(bucket).remove([path.trim()]);
 }
+
+/** Remove every PDF object under catalogs/{catalogId}/ */
+export async function deleteCatalogPdfObjects(catalogId: string) {
+  if (!catalogId.trim() || !isSupabaseAdminConfigured()) return;
+  const supabase = createSupabaseAdminClient();
+  const prefix = `catalogs/${catalogId.trim()}`;
+  const { data, error } = await supabase.storage.from(PDF_BUCKET).list(prefix, {
+    limit: 100,
+    offset: 0,
+  });
+  if (error || !data?.length) return;
+  const paths = data
+    .map((f) => f.name)
+    .filter(Boolean)
+    .map((name) => `${prefix}/${name}`);
+  if (paths.length) {
+    await supabase.storage.from(PDF_BUCKET).remove(paths);
+  }
+}
