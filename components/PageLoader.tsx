@@ -21,15 +21,20 @@ export function usePageReady() {
   return useContext(PageReadyContext);
 }
 
-/** Short branded splash — not a long wait screen */
-const MIN_LOADER_MS = 520;
-const PRELOAD_TIMEOUT_MS = 2500;
+/** Brief brand beat after assets are ready — not a fake long wait */
+const MIN_LOADER_MS = 480;
+/** Only show slow-net tip after this wait (fast nets finish earlier) */
+const SLOW_HINT_MS = 3800;
+/** Hard safety so a broken image never traps the user forever */
+const MAX_WAIT_MS = 28000;
+
+const SLOW_NET_TIP = "Make sure your internet speed is fast";
 
 function estimatePageProgress(): number {
   if (typeof document === "undefined") return 0;
   if (document.readyState === "complete") return 100;
 
-  let pct = document.readyState === "interactive" ? 68 : 22;
+  let pct = document.readyState === "interactive" ? 58 : 18;
 
   try {
     const resources = performance.getEntriesByType(
@@ -42,14 +47,26 @@ function estimatePageProgress(): number {
       }
       pct = Math.max(
         pct,
-        Math.min(94, Math.round((done / Math.max(resources.length, 1)) * 100))
+        Math.min(90, Math.round((done / Math.max(resources.length, 1)) * 100))
       );
     }
   } catch {
     // ignore
   }
 
-  return Math.min(99, Math.round(pct));
+  return Math.min(96, Math.round(pct));
+}
+
+function uniqueSrcs(srcs: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of srcs) {
+    const src = raw?.trim();
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    out.push(src);
+  }
+  return out;
 }
 
 function preloadImage(src: string): Promise<void> {
@@ -61,23 +78,57 @@ function preloadImage(src: string): Promise<void> {
       settled = true;
       resolve();
     };
-    img.onload = done;
+    const afterLoad = () => {
+      if (typeof img.decode === "function") {
+        void img.decode().then(done).catch(done);
+      } else {
+        done();
+      }
+    };
+    img.onload = afterLoad;
     img.onerror = done;
     img.src = src;
-    window.setTimeout(done, PRELOAD_TIMEOUT_MS);
+    if (img.complete && img.naturalWidth > 0) afterLoad();
   });
+}
+
+type NetworkConnection = {
+  effectiveType?: string;
+  saveData?: boolean;
+  downlink?: number;
+};
+
+function isLikelySlowNetwork(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & {
+    connection?: NetworkConnection;
+    mozConnection?: NetworkConnection;
+    webkitConnection?: NetworkConnection;
+  };
+  const c = nav.connection || nav.mozConnection || nav.webkitConnection;
+  if (!c) return false;
+  if (c.saveData) return true;
+  const type = c.effectiveType;
+  if (type === "slow-2g" || type === "2g" || type === "3g") return true;
+  if (typeof c.downlink === "number" && c.downlink > 0 && c.downlink < 1.5) {
+    return true;
+  }
+  return false;
 }
 
 type PageLoaderProps = {
   children: React.ReactNode;
-  /** Preload before revealing site (e.g. promo popup image) */
-  preloadSrc?: string | null;
+  /** Critical visuals (hero slides + promo) — site waits until these load */
+  preloadSrcs?: Array<string | null | undefined>;
 };
 
-export function PageLoader({ children, preloadSrc }: PageLoaderProps) {
+export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
+  const assets = uniqueSrcs(preloadSrcs ?? []);
+  const assetsKey = assets.join("|");
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
-  const [progress, setProgress] = useState(12);
+  const [progress, setProgress] = useState(10);
+  const [showSlowTip, setShowSlowTip] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
   const finish = useCallback(
@@ -97,19 +148,24 @@ export function PageLoader({ children, preloadSrc }: PageLoaderProps) {
   useEffect(() => {
     const startedAt = Date.now();
     document.documentElement.classList.add("loader-active");
-    setProgress(14);
+    setProgress(12);
+    setShowSlowTip(false);
 
     let cancelled = false;
     let pageLoaded = document.readyState === "complete";
-    let assetsReady = !preloadSrc;
+    let assetsReady = assets.length === 0;
+    let finished = false;
 
     const tick = window.setInterval(() => {
       setProgress((prev) => Math.max(prev, estimatePageProgress()));
-    }, 100);
+    }, 120);
 
     const tryFinish = () => {
-      if (cancelled || !pageLoaded || !assetsReady) return;
+      if (cancelled || finished || !pageLoaded || !assetsReady) return;
+      finished = true;
       window.clearInterval(tick);
+      window.clearTimeout(slowHintTimer);
+      window.clearTimeout(safetyTimer);
       finish(startedAt);
     };
 
@@ -124,29 +180,54 @@ export function PageLoader({ children, preloadSrc }: PageLoaderProps) {
       window.addEventListener("load", onLoad);
     }
 
-    if (preloadSrc) {
-      void preloadImage(preloadSrc).then(() => {
+    if (assets.length > 0) {
+      let loaded = 0;
+      void Promise.all(
+        assets.map((src) =>
+          preloadImage(src).then(() => {
+            if (cancelled) return;
+            loaded += 1;
+            const assetPct = Math.round((loaded / assets.length) * 100);
+            setProgress((p) =>
+              Math.max(p, Math.min(96, 20 + Math.round(assetPct * 0.72)))
+            );
+          })
+        )
+      ).then(() => {
         if (cancelled) return;
         assetsReady = true;
-        setProgress((p) => Math.max(p, 88));
+        setProgress((p) => Math.max(p, 94));
         tryFinish();
       });
     }
 
-    const fallback = window.setTimeout(() => {
+    // Fast nets usually finish before this — tip never appears.
+    // Known-slow connections get the tip earlier; otherwise only if still waiting.
+    const hintDelay = isLikelySlowNetwork() ? 1600 : SLOW_HINT_MS;
+    const slowHintTimer = window.setTimeout(() => {
+      if (cancelled || finished) return;
+      setShowSlowTip(true);
+    }, hintDelay);
+
+    // Last resort only — broken URLs must not lock the splash forever
+    const safetyTimer = window.setTimeout(() => {
+      if (cancelled || finished) return;
       pageLoaded = true;
       assetsReady = true;
       tryFinish();
-    }, 3200);
+    }, MAX_WAIT_MS);
 
     return () => {
       cancelled = true;
       window.removeEventListener("load", onLoad);
       window.clearInterval(tick);
-      window.clearTimeout(fallback);
+      window.clearTimeout(slowHintTimer);
+      window.clearTimeout(safetyTimer);
       document.documentElement.classList.remove("loader-active");
     };
-  }, [finish, preloadSrc]);
+    // assetsKey tracks the same URL set without depending on array identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetsKey, finish]);
 
   useEffect(() => {
     if (!loading) {
@@ -205,6 +286,12 @@ export function PageLoader({ children, preloadSrc }: PageLoaderProps) {
               </div>
 
               <p className="page-loader-wait">Please Wait</p>
+
+              {showSlowTip && (
+                <p className="page-loader-slow-tip" role="status">
+                  {SLOW_NET_TIP}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

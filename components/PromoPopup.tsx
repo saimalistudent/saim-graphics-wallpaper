@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { usePageReady } from "@/components/PageLoader";
+import { promoImageSrc } from "@/lib/promo-popup";
 import { PromoPopup as PromoPopupType } from "@/lib/types";
 
 const SHOW_DELAY_MS = 3000;
@@ -17,22 +18,17 @@ export function PromoPopup({ promo }: Props) {
   const prefersReducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
 
-  const imageSrc = promo.image_url?.trim() || null;
-  // Bust browser cache when sample image is replaced
-  const displaySrc =
-    imageSrc === "/promo-popup-sample.png"
-      ? `${imageSrc}?v=3`
-      : imageSrc;
+  const displaySrc = promoImageSrc(promo.image_url);
 
   useEffect(() => {
-    if (!ready || !imageSrc) return;
+    if (!ready || !displaySrc) return;
 
     const timer = window.setTimeout(() => {
       setOpen(true);
     }, prefersReducedMotion ? 400 : SHOW_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [ready, prefersReducedMotion, imageSrc]);
+  }, [ready, prefersReducedMotion, displaySrc]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +47,7 @@ export function PromoPopup({ promo }: Props) {
     };
   }, [open]);
 
-  if (!imageSrc || !displaySrc) return null;
+  if (!displaySrc) return null;
 
   return (
     <AnimatePresence>
