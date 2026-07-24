@@ -23,6 +23,7 @@ export function usePageReady() {
 
 /** Short branded splash — not a long wait screen */
 const MIN_LOADER_MS = 520;
+const PRELOAD_TIMEOUT_MS = 2500;
 
 function estimatePageProgress(): number {
   if (typeof document === "undefined") return 0;
@@ -51,7 +52,29 @@ function estimatePageProgress(): number {
   return Math.min(99, Math.round(pct));
 }
 
-export function PageLoader({ children }: { children: React.ReactNode }) {
+function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    img.onload = done;
+    img.onerror = done;
+    img.src = src;
+    window.setTimeout(done, PRELOAD_TIMEOUT_MS);
+  });
+}
+
+type PageLoaderProps = {
+  children: React.ReactNode;
+  /** Preload before revealing site (e.g. promo popup image) */
+  preloadSrc?: string | null;
+};
+
+export function PageLoader({ children, preloadSrc }: PageLoaderProps) {
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState(12);
@@ -76,30 +99,54 @@ export function PageLoader({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.add("loader-active");
     setProgress(14);
 
+    let cancelled = false;
+    let pageLoaded = document.readyState === "complete";
+    let assetsReady = !preloadSrc;
+
     const tick = window.setInterval(() => {
       setProgress((prev) => Math.max(prev, estimatePageProgress()));
     }, 100);
 
-    const onLoad = () => {
+    const tryFinish = () => {
+      if (cancelled || !pageLoaded || !assetsReady) return;
       window.clearInterval(tick);
       finish(startedAt);
     };
 
-    if (document.readyState === "complete") {
+    const onLoad = () => {
+      pageLoaded = true;
+      tryFinish();
+    };
+
+    if (pageLoaded) {
       onLoad();
     } else {
       window.addEventListener("load", onLoad);
     }
 
-    const fallback = window.setTimeout(() => onLoad(), 2800);
+    if (preloadSrc) {
+      void preloadImage(preloadSrc).then(() => {
+        if (cancelled) return;
+        assetsReady = true;
+        setProgress((p) => Math.max(p, 88));
+        tryFinish();
+      });
+    }
+
+    const fallback = window.setTimeout(() => {
+      pageLoaded = true;
+      assetsReady = true;
+      tryFinish();
+    }, 3200);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("load", onLoad);
       window.clearInterval(tick);
       window.clearTimeout(fallback);
       document.documentElement.classList.remove("loader-active");
     };
-  }, [finish]);
+  }, [finish, preloadSrc]);
 
   useEffect(() => {
     if (!loading) {

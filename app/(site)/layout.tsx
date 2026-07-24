@@ -4,14 +4,18 @@ import { Footer } from "@/components/layout/Footer";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { PageVisitTracker } from "@/components/PageVisitTracker";
 import { PageLoader } from "@/components/PageLoader";
+import { PromoPopup } from "@/components/PromoPopup";
+import { getActivePromoPopup } from "@/lib/promo-popup";
 
-export default function SiteLayout({
+export default async function SiteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const promo = await getActivePromoPopup();
+
   return (
-    <PageLoader>
+    <PageLoader preloadSrc={promo?.image_url}>
       <PageVisitTracker />
       <div className="site-topbar">
         <Navbar />
@@ -20,6 +24,7 @@ export default function SiteLayout({
       <main className="flex-1">{children}</main>
       <Footer />
       <WhatsAppButton />
+      {promo && <PromoPopup promo={promo} />}
     </PageLoader>
   );
 }

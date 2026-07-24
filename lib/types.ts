@@ -30,3 +30,22 @@ export type DashboardStats = {
   mostViewed: CatalogWithViews[];
   visitsByDay: { date: string; count: number }[];
 };
+
+export type PromoPopup = {
+  id: string;
+  enabled: boolean;
+  title: string;
+  body: string;
+  image_url: string | null;
+  cta_label: string | null;
+  cta_url: string | null;
+  updated_at: string;
+};
+
+export type HeroSlide = {
+  id: string;
+  image_url: string;
+  sort_order: number;
+  enabled: boolean;
+  updated_at: string;
+};

@@ -4,6 +4,7 @@ import {
   Inter,
   Noto_Sans_Arabic,
   Oswald,
+  Cinzel,
 } from "next/font/google";
 import "./globals.css";
 
@@ -22,6 +23,13 @@ const inter = Inter({
 const oswald = Oswald({
   subsets: ["latin"],
   variable: "--font-oswald",
+  display: "swap",
+});
+
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-cinzel",
   display: "swap",
 });
 
@@ -54,7 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${inter.variable} ${oswald.variable} ${urdu.variable} antialiased min-h-screen flex flex-col`}
+        className={`${playfair.variable} ${inter.variable} ${oswald.variable} ${cinzel.variable} ${urdu.variable} antialiased min-h-screen flex flex-col`}
       >
         {children}
       </body>
