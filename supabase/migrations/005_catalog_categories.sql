@@ -16,6 +16,7 @@ create index if not exists catalogs_category_id_idx on catalogs (category_id);
 
 alter table catalog_categories enable row level security;
 
+drop policy if exists "Public can read catalog_categories" on catalog_categories;
 create policy "Public can read catalog_categories"
   on catalog_categories for select
   using (true);
