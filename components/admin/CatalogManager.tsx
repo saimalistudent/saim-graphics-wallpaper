@@ -55,7 +55,7 @@ export function CatalogManager() {
         setCatalogs(await catRes.json());
         setError("");
       } else {
-        setError("Catalogs load nahi hue. Supabase tables check karein.");
+        setError("Could not load catalogs. Check Supabase tables.");
       }
       if (categoriesRes.ok) {
         const data = await categoriesRes.json();
@@ -64,7 +64,7 @@ export function CatalogManager() {
         }
       }
     } catch {
-      setError("Network error — dubara try karein.");
+      setError("Network error — try again.");
     } finally {
       setLoading(false);
     }
@@ -99,10 +99,10 @@ export function CatalogManager() {
     if (!thumbnailFile) return null;
 
     if (thumbnailFile.size > 5 * 1024 * 1024) {
-      throw new Error("Photo 5MB se chhoti honi chahiye");
+      throw new Error("Image must be under 5MB");
     }
     if (!thumbnailFile.type.startsWith("image/")) {
-      throw new Error("Sirf image file upload karein");
+      throw new Error("Upload an image file only");
     }
 
     const formData = new FormData();
@@ -115,7 +115,7 @@ export function CatalogManager() {
 
     if (!res.ok) {
       const data = await res.json();
-      throw new Error(data.error ?? "Photo upload fail");
+      throw new Error(data.error ?? "Photo upload failed");
     }
 
     const data = await res.json();
@@ -124,10 +124,10 @@ export function CatalogManager() {
 
   async function uploadCdnPdfToStorage(catalogId: string, file: File) {
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      throw new Error("Sirf PDF file upload karein");
+      throw new Error("Upload a PDF file only");
     }
     if (file.size > 50 * 1024 * 1024) {
-      throw new Error("PDF 50MB se chhoti honi chahiye");
+      throw new Error("PDF must be under 50MB");
     }
 
     const signRes = await fetch("/api/admin/catalog-pdf", {
@@ -140,7 +140,7 @@ export function CatalogManager() {
       }),
     });
     const signData = await signRes.json();
-    if (!signRes.ok) throw new Error(signData.error || "Signed URL fail");
+    if (!signRes.ok) throw new Error(signData.error || "Signed URL failed");
 
     const putRes = await fetch(signData.signedUrl as string, {
       method: "PUT",
@@ -151,7 +151,7 @@ export function CatalogManager() {
       body: file,
     });
     if (!putRes.ok) {
-      throw new Error("PDF Storage upload fail — bucket catalog-pdfs check karein");
+      throw new Error("PDF upload failed — check catalog-pdfs bucket");
     }
 
     const confirmRes = await fetch("/api/admin/catalog-pdf", {
@@ -167,7 +167,7 @@ export function CatalogManager() {
     const confirmData = await confirmRes.json();
     if (!confirmRes.ok) {
       throw new Error(
-        confirmData.error || "PDF save fail — 004 migration run karein?"
+        confirmData.error || "PDF save failed — run 004 migration?"
       );
     }
   }
@@ -179,7 +179,7 @@ export function CatalogManager() {
       body: JSON.stringify({ catalogId, force }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "CDN sync fail");
+    if (!res.ok) throw new Error(data.error || "CDN sync failed");
     return data as { skipped?: boolean; bytes?: number; message?: string };
   }
 
@@ -189,12 +189,10 @@ export function CatalogManager() {
     setSuccess("");
     try {
       await uploadCdnPdfToStorage(catalogId, file);
-      setSuccess(
-        "PDF Supabase CDN pe save — website isi se fast load karegi. Preview bhi update."
-      );
+      setSuccess("PDF saved to CDN — site will load it from there.");
       await fetchCatalogs();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "PDF upload fail");
+      setError(err instanceof Error ? err.message : "PDF upload failed");
     } finally {
       setPdfUploadingId(null);
     }
@@ -220,9 +218,9 @@ export function CatalogManager() {
     setSuccess("");
 
     try {
-      if (!title.trim()) throw new Error("Catalog name zaroori hai");
+      if (!title.trim()) throw new Error("Catalog name is required");
       if (!driveFileId.trim() && !pdfFile) {
-        throw new Error("Google Drive link YA PDF file zaroori hai");
+        throw new Error("Add a Drive link or a PDF file");
       }
 
       let uploaded: string | null = null;
@@ -260,40 +258,34 @@ export function CatalogManager() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Save fail");
+        throw new Error(data.error ?? "Save failed");
       }
 
       const saved = (await res.json()) as Catalog;
 
       // Always land PDF on Supabase CDN — site reads pdf_url first (fast)
       setCdnSyncing(true);
-      setSuccess("Catalog save — Supabase CDN pe PDF ja rahi hai…");
+      setSuccess("Catalog saved — uploading PDF to CDN…");
       try {
         if (pdfFile) {
           await uploadCdnPdfToStorage(saved.id, pdfFile);
-          setSuccess(
-            "PDF Supabase CDN pe upload ho gayi — website wahan se fast load karegi."
-          );
+          setSuccess("PDF uploaded to CDN.");
         } else {
           const needsForce = !saved.pdf_url;
           const sync = await syncCdnFromDrive(saved.id, needsForce);
           if (sync.skipped && saved.pdf_url) {
-            setSuccess(
-              "Catalog update — CDN PDF pehle se ready (site Supabase se load karti hai)."
-            );
+            setSuccess("Catalog updated — CDN PDF already ready.");
           } else {
             const mb = sync.bytes
               ? ` (${Math.round(Number(sync.bytes) / 1024 / 1024)}MB)`
               : "";
-            setSuccess(
-              `PDF Supabase CDN pe auto upload ho gayi${mb} — website wahan se fetch karti hai.`
-            );
+            setSuccess(`PDF synced to CDN${mb}.`);
           }
         }
       } catch (cdnErr) {
         setError(
-          (cdnErr instanceof Error ? cdnErr.message : "CDN upload fail") +
-            " — catalog save ho gaya; neeche se Upload CDN PDF try karein."
+          (cdnErr instanceof Error ? cdnErr.message : "CDN upload failed") +
+            " — catalog saved; use Upload CDN PDF below."
         );
         setSuccess("");
       } finally {
@@ -303,7 +295,7 @@ export function CatalogManager() {
       resetForm();
       await fetchCatalogs();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kuch galat ho gaya");
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
       setCdnSyncing(false);
@@ -322,10 +314,10 @@ export function CatalogManager() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function removeCdnPdf(catalogId: string, title: string) {
+  async function removeCdnPdf(catalogId: string, catalogTitle: string) {
     if (
       !confirm(
-        `"${title}" ki CDN PDF Supabase se delete karni hai? Catalog reh jayegi; Drive fallback use hoga.`
+        `Remove CDN PDF for "${catalogTitle}"? Catalog stays; Drive fallback will be used.`
       )
     ) {
       return;
@@ -339,18 +331,18 @@ export function CatalogManager() {
         { method: "DELETE" }
       );
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "PDF remove fail");
-      setSuccess(`CDN PDF remove ho gayi (Supabase se bhi): ${title}`);
+      if (!res.ok) throw new Error(data.error || "PDF remove failed");
+      setSuccess(`CDN PDF removed: ${catalogTitle}`);
       await fetchCatalogs();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "PDF remove fail");
+      setError(err instanceof Error ? err.message : "PDF remove failed");
     } finally {
       setPdfUploadingId(null);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Ye catalog delete karna hai?")) return;
+    if (!confirm("Delete this catalog?")) return;
 
     setError("");
     setSuccess("");
@@ -358,9 +350,9 @@ export function CatalogManager() {
     if (res.ok) {
       if (editingId === id) resetForm();
       await fetchCatalogs();
-      setSuccess("Catalog delete ho gaya.");
+      setSuccess("Catalog deleted.");
     } else {
-      setError("Delete nahi hua.");
+      setError("Delete failed.");
     }
   }
 
@@ -370,15 +362,13 @@ export function CatalogManager() {
         <div className="flex items-center gap-2">
           <Plus className="h-5 w-5 text-gold" />
           <h2 className="admin-card-title">
-            {editingId ? "Catalog Edit karein" : "Naya Catalog Add karein"}
+            {editingId ? "Edit Catalog" : "Add Catalog"}
           </h2>
         </div>
 
         <p className="text-sm text-text-secondary">
-          PDF <strong>hamesha Supabase CDN</strong> pe auto upload hoti hai (file
-          choose karo YA Drive link). Website{" "}
-          <strong>CDN se fetch</strong> karti hai taake open tez ho. Drive link
-          optional hai agar aap PDF file upload kar rahe ho.
+          PDFs upload to <strong>Supabase CDN</strong> (file or Drive link). The
+          site loads from CDN for speed. Drive is optional if you upload a PDF.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -397,7 +387,7 @@ export function CatalogManager() {
               <label className="admin-label">
                 Category{" "}
                 <span className="font-normal text-text-secondary">
-                  (website filter)
+                  (site filter)
                 </span>
               </label>
               <select
@@ -405,7 +395,7 @@ export function CatalogManager() {
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="admin-input"
               >
-                <option value="">— None (sirf ALL mein) —</option>
+                <option value="">— None (ALL only) —</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -413,30 +403,31 @@ export function CatalogManager() {
                 ))}
               </select>
               <p className="mt-1 text-xs text-text-secondary">
-                Categories manage: Admin → Categories
+                Manage categories under Admin → Categories
               </p>
             </div>
             <div>
               <label className="admin-label">
                 2. Google Drive Link / File ID{" "}
                 <span className="font-normal text-text-secondary">
-                  (optional if PDF file below)
+                  (optional if PDF below)
                 </span>
               </label>
               <input
                 value={driveFileId}
                 onChange={(e) => setDriveFileId(e.target.value)}
                 className="admin-input"
-                placeholder="Drive share link paste karein"
+                placeholder="Paste Drive share link"
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Drive pe file &quot;Anyone with the link can view&quot; rakhein —
-                warna seedha PDF file upload karein.
+                Set Drive sharing to &quot;Anyone with the link&quot; — or upload
+                a PDF file instead.
               </p>
             </div>
             <div>
               <label className="admin-label">
-                3. Preview Photo <span className="font-normal text-text-secondary">(optional)</span>
+                3. Preview Photo{" "}
+                <span className="font-normal text-text-secondary">(optional)</span>
               </label>
               <input
                 type="file"
@@ -445,14 +436,14 @@ export function CatalogManager() {
                 className="admin-input file:mr-3 file:rounded-md file:border-0 file:bg-gold/15 file:px-3 file:py-1.5 file:text-sm file:text-burgundy"
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Agar empty chhoro to system PDF page 1 se auto preview nikalega.
+                Leave empty to auto-preview from PDF page 1.
               </p>
             </div>
             <div>
               <label className="admin-label">
                 4. PDF file{" "}
                 <span className="font-normal text-text-secondary">
-                  (recommended — seedha Supabase CDN)
+                  (recommended — direct to CDN)
                 </span>
               </label>
               <input
@@ -463,8 +454,8 @@ export function CatalogManager() {
               />
               <p className="mt-1 text-xs text-text-secondary">
                 {pdfFile
-                  ? `Selected: ${pdfFile.name} → save pe CDN pe jayegi`
-                  : "Empty + Drive link = Drive se auto CDN sync. PDF compress aap khud karke yahan upload kar sakte ho."}
+                  ? `Selected: ${pdfFile.name} → uploads to CDN on save`
+                  : "Empty + Drive link = auto CDN sync from Drive."}
               </p>
             </div>
           </div>
@@ -508,7 +499,7 @@ export function CatalogManager() {
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-text-secondary px-3 text-center">
                   <ImageIcon className="h-8 w-8 opacity-40" />
                   <span className="text-xs">
-                    Drive link paste karo — preview yahan auto aayega
+                    Paste a Drive link for auto preview
                   </span>
                 </div>
               )}
@@ -543,11 +534,11 @@ export function CatalogManager() {
 
       <div className="admin-card">
         <h2 className="admin-card-title mb-1">
-          Aapke Catalogs ({catalogs.length})
+          Your Catalogs ({catalogs.length})
         </h2>
         <p className="text-sm text-text-secondary mb-5">
-          Edit / delete yahan se. Har catalog pe <strong>Upload CDN PDF</strong> se
-          Storage pe PDF rakhein — users ko Drive wait nahi lagegi. Ya CLI:{" "}
+          Edit or delete here. Use <strong>Upload CDN PDF</strong> so visitors
+          load from Storage. Or CLI:{" "}
           <code className="text-xs">npm run migrate:pdfs</code>
         </p>
 
@@ -555,7 +546,7 @@ export function CatalogManager() {
           <p className="text-text-secondary text-sm">Loading...</p>
         ) : catalogs.length === 0 ? (
           <p className="text-text-secondary text-sm">
-            Abhi koi catalog nahi. Upar form se pehla add karein.
+            No catalogs yet. Add one with the form above.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -663,7 +654,7 @@ export function CatalogManager() {
                               setError(
                                 err instanceof Error
                                   ? err.message
-                                  : "CDN sync fail"
+                                  : "CDN sync failed"
                               );
                             } finally {
                               setPdfUploadingId(null);

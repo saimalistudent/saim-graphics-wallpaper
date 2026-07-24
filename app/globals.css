@@ -16,11 +16,6 @@
   --font-body: var(--font-inter);
 }
 
-.font-urdu {
-  font-family: var(--font-urdu), "Noto Sans Arabic", Tahoma, sans-serif;
-  line-height: 1.7;
-}
-
 body {
   background: var(--color-background);
   color: #1a1a1a;
@@ -1027,6 +1022,36 @@ h6 {
   box-shadow: 0 10px 22px rgba(74, 4, 4, 0.1);
 }
 
+/* Opaque category rows — avoid translucent stacks that glitch over admin-card */
+.admin-category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-category-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(74, 4, 4, 0.12);
+  background: #faf7f2;
+}
+
+.admin-category-name {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a0404;
+  letter-spacing: 0.02em;
+}
+
 .catalog-preview-frame {
   isolation: isolate;
 }
@@ -1513,7 +1538,7 @@ html.pdf-viewing .pdf-page-inner {
   font-size: 0.7rem;
   line-height: 1.4;
   color: var(--color-text-secondary);
-  text-align: right;
+  text-align: left;
   padding: 0.35rem 0.55rem;
   border-radius: 0.45rem;
   border: 1px solid rgba(201, 162, 39, 0.22);

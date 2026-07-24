@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { isAutoDriveThumbnail } from "@/lib/drive";
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   if (catErr || !catalog) {
     return NextResponse.json(
-      { error: catErr?.message || "Catalog nahi mili" },
+      { error: catErr?.message || "Catalog not found" },
       { status: 404 }
     );
   }
@@ -66,13 +67,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       skipped: true,
       catalog,
-      message: "CDN PDF pehle se maujood hai",
+      message: "CDN PDF already exists",
     });
   }
 
   if (!catalog.drive_file_id) {
     return NextResponse.json(
-      { error: "Drive file ID missing — pehle Drive link save karein" },
+      { error: "Drive file ID missing — save a Drive link first" },
       { status: 400 }
     );
   }
@@ -84,8 +85,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          (e instanceof Error ? e.message : "Drive download fail") +
-          " — file public sharing check karein",
+          (e instanceof Error ? e.message : "Drive download failed") +
+          " — check file public sharing",
       },
       { status: 502 }
     );
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
 
   if (pdfBuf.byteLength > 50 * 1024 * 1024) {
     return NextResponse.json(
-      { error: "PDF 50MB se bari hai" },
+      { error: "PDF must be under 50MB" },
       { status: 400 }
     );
   }
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
       {
         error:
           updErr.message +
-          " — 004_catalog_pdf_storage.sql run hua hai?",
+          " — run 004_catalog_pdf_storage.sql in Supabase?",
       },
       { status: 500 }
     );
@@ -155,6 +156,8 @@ export async function POST(request: NextRequest) {
     await deleteStorageObject(PDF_BUCKET, previousPath);
   }
 
+  revalidatePath("/catalogs");
+  revalidatePath("/");
   return NextResponse.json({
     skipped: false,
     catalog: updated,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/auth";
 import {
   createSupabaseAdminClient,
@@ -70,7 +71,7 @@ export async function PUT(request: NextRequest) {
   const enabled = body.enabled === undefined ? true : Boolean(body.enabled);
 
   if (!image_url) {
-    return NextResponse.json({ error: "Image zaroori hai" }, { status: 400 });
+    return NextResponse.json({ error: "Image is required" }, { status: 400 });
   }
 
   const supabase = createSupabaseAdminClient();
@@ -115,11 +116,12 @@ export async function PUT(request: NextRequest) {
     if (inserted.error) {
       return NextResponse.json({ error: inserted.error.message }, { status: 500 });
     }
+    revalidatePath("/");
     return NextResponse.json(inserted.data as HeroSlide);
   }
 
   if (!target) {
-    return NextResponse.json({ error: "Slide nahi mili" }, { status: 404 });
+    return NextResponse.json({ error: "Slide not found" }, { status: 404 });
   }
 
   const previousUrl = target.image_url as string;
@@ -139,7 +141,7 @@ export async function PUT(request: NextRequest) {
       {
         error:
           updated.error.message +
-          " — pehle Supabase mein 003_hero_slides.sql run karein",
+          " — run 003_hero_slides.sql in Supabase first",
       },
       { status: 500 }
     );
@@ -149,5 +151,6 @@ export async function PUT(request: NextRequest) {
     await deleteStoredImage(supabase, previousUrl);
   }
 
+  revalidatePath("/");
   return NextResponse.json(updated.data as HeroSlide);
 }

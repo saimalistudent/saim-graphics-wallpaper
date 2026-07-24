@@ -20,18 +20,16 @@ export function CategoryManager() {
       const res = await fetch("/api/admin/categories");
       const data = await res.json();
       if (data._warning) {
-        setError(
-          "Supabase mein 005_catalog_categories.sql migration run karein."
-        );
+        setError("Run 005_catalog_categories.sql in Supabase first.");
         setCategories([]);
       } else if (!res.ok) {
-        throw new Error(data.error || "Categories load fail");
+        throw new Error(data.error || "Failed to load categories");
       } else {
         setCategories(data as CatalogCategory[]);
         setError("");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Load fail");
+      setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -54,12 +52,12 @@ export function CategoryManager() {
         body: JSON.stringify({ name: newName.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Add fail");
+      if (!res.ok) throw new Error(data.error || "Add failed");
       setNewName("");
-      setSuccess(`Category add: ${data.name}`);
+      setSuccess(`Added ${data.name}`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Add fail");
+      setError(err instanceof Error ? err.message : "Add failed");
     } finally {
       setBusy(false);
     }
@@ -77,25 +75,19 @@ export function CategoryManager() {
         body: JSON.stringify({ id, name: editName.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Update fail");
+      if (!res.ok) throw new Error(data.error || "Update failed");
       setEditingId(null);
-      setSuccess(`Renamed → ${data.name}`);
+      setSuccess(`Renamed to ${data.name}`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Update fail");
+      setError(err instanceof Error ? err.message : "Update failed");
     } finally {
       setBusy(false);
     }
   }
 
   async function removeCategory(id: string, name: string) {
-    if (
-      !confirm(
-        `"${name}" delete? Linked catalogs se category hat jayegi (designs delete nahi hongi).`
-      )
-    ) {
-      return;
-    }
+    if (!confirm(`Delete "${name}"? Catalogs keep their designs.`)) return;
     setBusy(true);
     setError("");
     setSuccess("");
@@ -105,11 +97,11 @@ export function CategoryManager() {
         { method: "DELETE" }
       );
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Delete fail");
-      setSuccess(`Deleted: ${name}`);
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      setSuccess(`Deleted ${name}`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete fail");
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setBusy(false);
     }
@@ -118,10 +110,10 @@ export function CategoryManager() {
   return (
     <div className="admin-card space-y-4">
       <div>
-        <h2 className="admin-card-title">Design Categories</h2>
+        <h2 className="admin-card-title">Categories</h2>
         <p className="text-sm text-text-secondary mt-1">
-          Website catalogs page pe ye filters dikhengi.{" "}
-          <strong>ALL</strong> hamesha default selected rehti hai (saare designs).
+          Filters on the catalogs page. <strong>ALL</strong> is always available
+          and selected by default.
         </p>
       </div>
 
@@ -138,7 +130,7 @@ export function CategoryManager() {
 
       <form onSubmit={addCategory} className="flex flex-wrap gap-2 items-end">
         <div className="flex-1 min-w-[10rem]">
-          <label className="admin-label">Nayi category</label>
+          <label className="admin-label">New category</label>
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -160,16 +152,11 @@ export function CategoryManager() {
       {loading ? (
         <p className="text-sm text-text-secondary">Loading…</p>
       ) : categories.length === 0 ? (
-        <p className="text-sm text-text-secondary">
-          Abhi koi category nahi — migration run karein ya add karein.
-        </p>
+        <p className="text-sm text-text-secondary">No categories yet.</p>
       ) : (
-        <ul className="divide-y divide-burgundy/10 border border-burgundy/10 rounded-xl overflow-hidden">
+        <ul className="admin-category-list">
           {categories.map((cat) => (
-            <li
-              key={cat.id}
-              className="flex items-center gap-2 px-3 py-2.5 bg-white/60"
-            >
+            <li key={cat.id} className="admin-category-row">
               {editingId === cat.id ? (
                 <>
                   <input
@@ -200,9 +187,7 @@ export function CategoryManager() {
                 </>
               ) : (
                 <>
-                  <span className="flex-1 font-heading font-semibold tracking-wide text-burgundy">
-                    {cat.name}
-                  </span>
+                  <span className="admin-category-name">{cat.name}</span>
                   <button
                     type="button"
                     className="admin-chip inline-flex items-center gap-1"

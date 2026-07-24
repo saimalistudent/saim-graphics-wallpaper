@@ -1125,12 +1125,8 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
             {catalog.title}
           </h1>
         </div>
-        <p
-          className="pdf-viewer-tip sm:hidden font-urdu"
-          dir="rtl"
-          lang="ur"
-        >
-          اپنی پسندیدہ ڈیزائن کا اسکرین شاٹ لیں اور نیچے WhatsApp بٹن دبا کر ہمیں بھیج دیں
+        <p className="pdf-viewer-tip sm:hidden">
+          Screenshot your favorite design and send it via WhatsApp below
         </p>
       </div>
 

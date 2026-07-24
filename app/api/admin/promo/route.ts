@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/auth";
 import {
   createSupabaseAdminClient,
@@ -66,7 +67,7 @@ export async function PUT(request: NextRequest) {
 
   if (!image_url) {
     return NextResponse.json(
-      { error: "Popup image zaroori hai" },
+      { error: "Popup image is required" },
       { status: 400 }
     );
   }
@@ -121,16 +122,17 @@ export async function PUT(request: NextRequest) {
       {
         error:
           result.error.message +
-          " — pehle Supabase mein 002_promo_popup.sql migration run karein",
+          " — run 002_promo_popup.sql in Supabase first",
       },
       { status: 500 }
     );
   }
 
-  // Purani storage image hatao jab naya URL alag ho
+  // Delete previous storage image when URL changes
   if (previousImageUrl && previousImageUrl !== image_url) {
     await deleteStoredPromoImage(supabase, previousImageUrl);
   }
 
+  revalidatePath("/");
   return NextResponse.json(result.data as PromoPopup);
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { isAdminAuthenticated } from "@/lib/auth";
@@ -135,10 +136,11 @@ export async function POST() {
       log.push("promo → CDN");
     }
 
+    revalidatePath("/");
     return NextResponse.json({ ok: true, log });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Migrate fail" },
+      { error: e instanceof Error ? e.message : "Sync failed" },
       { status: 500 }
     );
   }

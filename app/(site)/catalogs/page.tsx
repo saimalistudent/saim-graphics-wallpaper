@@ -8,6 +8,10 @@ export const metadata = {
   title: "Catalogs | SAIM GRAPHICS | 3D PANAFLEX WALLPAPER",
 };
 
+/** Always fetch fresh categories + catalogs (admin edits must show live) */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function CatalogsPage() {
   return (
     <section className="catalogs-page-section py-10 sm:py-14">
