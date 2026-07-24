@@ -44,7 +44,11 @@ async function listAllFiles(
       const nested = await listAllFiles(sb, full);
       out.push(...nested);
     } else {
-      out.push({ name: full, id: item.id, metadata: item.metadata });
+      out.push({
+        name: full,
+        id: item.id ?? undefined,
+        metadata: item.metadata ?? undefined,
+      });
     }
   }
   return out;
