@@ -122,10 +122,23 @@ export async function DELETE(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const { data: existing } = await supabase
+    .from("catalogs")
+    .select("pdf_path")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("catalogs").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (existing?.pdf_path) {
+    const { deleteStorageObject, PDF_BUCKET } = await import(
+      "@/lib/catalog-pdf-storage"
+    );
+    await deleteStorageObject(PDF_BUCKET, existing.pdf_path as string);
   }
 
   return NextResponse.json({ success: true });

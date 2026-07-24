@@ -21,14 +21,14 @@ export function usePageReady() {
   return useContext(PageReadyContext);
 }
 
-/** Brief brand beat after assets are ready — not a fake long wait */
-const MIN_LOADER_MS = 320;
+/** Brief brand beat after critical visuals — keep under ~1s on normal nets */
+const MIN_LOADER_MS = 160;
 /** Only show slow-net tip after this wait (fast nets finish earlier) */
-const SLOW_HINT_MS = 2800;
+const SLOW_HINT_MS = 1800;
 /** Hard safety so a broken image never traps the user forever */
-const MAX_WAIT_MS = 12000;
+const MAX_WAIT_MS = 4500;
 
-const SLOW_NET_TIP = "Make sure your internet speed is fast";
+const SLOW_NET_TIP = "MAKE SURE YOUR INTERNET SPEED IS FAST";
 
 function estimatePageProgress(): number {
   if (typeof document === "undefined") return 0;
@@ -152,7 +152,10 @@ export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
     setShowSlowTip(false);
 
     let cancelled = false;
-    let pageLoaded = document.readyState === "complete";
+    // Don't wait for full window "load" (fonts/analytics) — interactive + visuals is enough
+    let pageLoaded =
+      document.readyState === "complete" ||
+      document.readyState === "interactive";
     let assetsReady = assets.length === 0;
     let finished = false;
 
@@ -169,15 +172,16 @@ export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
       finish(startedAt);
     };
 
-    const onLoad = () => {
+    const onReady = () => {
       pageLoaded = true;
       tryFinish();
     };
 
     if (pageLoaded) {
-      onLoad();
+      onReady();
     } else {
-      window.addEventListener("load", onLoad);
+      document.addEventListener("DOMContentLoaded", onReady, { once: true });
+      window.addEventListener("load", onReady, { once: true });
     }
 
     if (assets.length > 0) {
@@ -219,7 +223,8 @@ export function PageLoader({ children, preloadSrcs }: PageLoaderProps) {
 
     return () => {
       cancelled = true;
-      window.removeEventListener("load", onLoad);
+      document.removeEventListener("DOMContentLoaded", onReady);
+      window.removeEventListener("load", onReady);
       window.clearInterval(tick);
       window.clearTimeout(slowHintTimer);
       window.clearTimeout(safetyTimer);

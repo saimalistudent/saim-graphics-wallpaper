@@ -79,10 +79,26 @@ Visit `http://localhost:3000`
 | `/admin/dashboard` | Analytics dashboard |
 | `/admin/catalogs` | Catalog CRUD manager |
 
-## PDF Hosting
+## Site visuals (hero + promo)
 
-PDFs are **never** stored in this repo or on Netlify. Only Google Drive file IDs are stored in Supabase. The site embeds PDFs via:
+Hero slides and promo popup images are served from Supabase Storage (`thumbnails` bucket: `hero/`, `promo/`).
 
+```bash
+npm run migrate:visuals
 ```
-https://drive.google.com/file/d/{FILE_ID}/preview
+
+Admin upload replace: new file → CDN, previous Storage object deleted automatically.
+
+
+Preferred: PDFs in Supabase Storage bucket **`catalog-pdfs`** (public CDN).  
+Fallback: Google Drive via `/api/drive-pdf/[id]`.
+
+1. Run `supabase/migrations/004_catalog_pdf_storage.sql` in Supabase SQL Editor
+2. Create public bucket `catalog-pdfs` (script/admin upload can also create it)
+3. Admin → Catalogs → **Upload CDN PDF**, or migrate all:
+
+```bash
+npm run migrate:pdfs
 ```
+
+Until `pdf_url` is set, the site still uses Drive (no breakage).

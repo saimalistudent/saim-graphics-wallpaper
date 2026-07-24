@@ -10,6 +10,7 @@ export function HeroSlidesManager() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,11 +77,38 @@ export function HeroSlidesManager() {
           s.sort_order === slide.sort_order ? (data as HeroSlide) : s
         )
       );
-      setMessage(`Slide ${slide.sort_order} update ho gayi.`);
+      setMessage(`Slide ${slide.sort_order} CDN pe update — purani delete.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Update failed");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function syncAllToCdn() {
+    setSyncing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/site-visuals/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "CDN sync fail");
+      setMessage("Hero + promo visuals Supabase CDN pe ready.");
+      const reload = await fetch("/api/admin/hero-slides");
+      if (reload.ok) {
+        const body = await reload.json();
+        setSlides(
+          Array.isArray(body)
+            ? body
+            : Array.isArray(body.slides)
+              ? body.slides
+              : DEFAULT_HERO_SLIDES
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "CDN sync fail");
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -90,6 +118,19 @@ export function HeroSlidesManager() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className="golden-button text-sm"
+          disabled={syncing}
+          onClick={() => void syncAllToCdn()}
+        >
+          {syncing ? "CDN sync…" : "Push slides + promo → Supabase CDN"}
+        </button>
+        <p className="text-xs text-text-secondary">
+          Local / pehli baar: CDN pe bhejo. Change pe purani auto delete.
+        </p>
+      </div>
       {error && (
         <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           {error}
@@ -131,8 +172,8 @@ export function HeroSlidesManager() {
               />
               <p className="text-xs text-text-secondary">
                 {busyId === slide.id
-                  ? "Uploading… (HD WebP optimize)"
-                  : "Nayi image = HD compress + purani replace"}
+                  ? "Uploading… (HD WebP → Supabase)"
+                  : "Nayi image = Supabase CDN + purani delete"}
               </p>
             </div>
           ))}

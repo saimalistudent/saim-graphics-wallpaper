@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { rememberCatalogScroll } from "@/lib/scroll-restore";
 import { prefetchCatalogPdf } from "@/lib/pdf-prefetch";
+import { catalogPdfUrl } from "@/lib/pdf-url";
 
 type CatalogCardProps = {
   catalog: Catalog;
@@ -86,7 +87,9 @@ export function CatalogCard({
     setSelected(true);
     rememberCatalogScroll(pathname || "/catalogs", catalog.id);
     // Warm cache in background only if missing — do not compete with open
-    if (fileId) prefetchCatalogPdf(fileId);
+    if (fileId) {
+      prefetchCatalogPdf(catalogPdfUrl(catalog), catalog.pdf_bytes);
+    }
   }
 
   return (
