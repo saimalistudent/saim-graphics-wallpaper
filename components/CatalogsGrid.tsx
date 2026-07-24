@@ -1,9 +1,13 @@
 import { getCatalogs } from "@/lib/catalogs";
-import { CatalogCard } from "@/components/CatalogCard";
+import { getCatalogCategories } from "@/lib/categories";
+import { CatalogsBrowser } from "@/components/CatalogsBrowser";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export async function CatalogsGrid() {
-  const catalogs = await getCatalogs();
+  const [catalogs, categories] = await Promise.all([
+    getCatalogs(),
+    getCatalogCategories(),
+  ]);
 
   if (catalogs.length === 0) {
     const misconfigured = !isSupabaseConfigured();
@@ -23,11 +27,5 @@ export async function CatalogsGrid() {
     );
   }
 
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6 items-stretch">
-      {catalogs.map((catalog, i) => (
-        <CatalogCard key={catalog.id} catalog={catalog} index={i} />
-      ))}
-    </div>
-  );
+  return <CatalogsBrowser catalogs={catalogs} categories={categories} />;
 }

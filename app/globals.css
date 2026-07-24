@@ -56,11 +56,17 @@ html.loader-active body {
 
 .site-shell {
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .site-shell-ready {
   opacity: 1;
-  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
 }
 
 noscript .site-shell {
@@ -1295,6 +1301,47 @@ h6 {
   font-size: 0.88rem;
   color: #6b6b6b;
   letter-spacing: 0.02em;
+}
+
+.catalog-category-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.catalog-category-chip {
+  touch-action: manipulation;
+  appearance: none;
+  border: 1px solid rgba(74, 4, 4, 0.22);
+  background: #fffaf3;
+  color: #4a0404;
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: clamp(0.68rem, 2vw, 0.78rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.catalog-category-chip:hover {
+  border-color: rgba(201, 162, 39, 0.65);
+  color: #6b0a0a;
+}
+
+.catalog-category-chip--active {
+  background: linear-gradient(160deg, #6b0a0a 0%, #4a0404 50%, #2d0202 100%);
+  color: #fef1a2;
+  border-color: rgba(232, 197, 71, 0.7);
+  box-shadow: 0 4px 12px rgba(74, 4, 4, 0.28);
 }
 
 .view-all-catalogs-btn {

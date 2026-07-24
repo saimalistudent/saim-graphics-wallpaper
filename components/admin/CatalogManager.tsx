@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Catalog } from "@/lib/types";
+import { Catalog, CatalogCategory } from "@/lib/types";
 import {
   extractDriveFileId,
   getCatalogPreviewBadge,
@@ -14,9 +14,11 @@ import { ImageIcon, Pencil, Trash2, Plus, Sparkles } from "lucide-react";
 
 export function CatalogManager() {
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [driveFileId, setDriveFileId] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,12 +47,21 @@ export function CatalogManager() {
   async function fetchCatalogs() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/catalogs");
-      if (res.ok) {
-        setCatalogs(await res.json());
+      const [catRes, categoriesRes] = await Promise.all([
+        fetch("/api/admin/catalogs"),
+        fetch("/api/admin/categories"),
+      ]);
+      if (catRes.ok) {
+        setCatalogs(await catRes.json());
         setError("");
       } else {
         setError("Catalogs load nahi hue. Supabase tables check karein.");
+      }
+      if (categoriesRes.ok) {
+        const data = await categoriesRes.json();
+        if (!data._warning && Array.isArray(data)) {
+          setCategories(data as CatalogCategory[]);
+        }
       }
     } catch {
       setError("Network error — dubara try karein.");
@@ -178,7 +189,9 @@ export function CatalogManager() {
     setSuccess("");
     try {
       await uploadCdnPdfToStorage(catalogId, file);
-      setSuccess("CDN PDF save ho gayi — users ko jaldi open hogi.");
+      setSuccess(
+        "PDF Supabase CDN pe save — website isi se fast load karegi. Preview bhi update."
+      );
       await fetchCatalogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF upload fail");
@@ -190,6 +203,7 @@ export function CatalogManager() {
   function resetForm() {
     setTitle("");
     setDriveFileId("");
+    setCategoryId("");
     setThumbnailFile(null);
     setPdfFile(null);
     setPreviewUrl(null);
@@ -206,17 +220,30 @@ export function CatalogManager() {
     setSuccess("");
 
     try {
+      if (!title.trim()) throw new Error("Catalog name zaroori hai");
+      if (!driveFileId.trim() && !pdfFile) {
+        throw new Error("Google Drive link YA PDF file zaroori hai");
+      }
+
       let uploaded: string | null = null;
       if (thumbnailFile) {
         uploaded = await uploadThumbnail();
-      } else if (editingId && existingThumb && !isAutoDriveThumbnail(existingThumb)) {
+      } else if (
+        editingId &&
+        existingThumb &&
+        !isAutoDriveThumbnail(existingThumb)
+      ) {
         uploaded = existingThumb;
       }
 
+      const drivePayload =
+        driveFileId.trim() || `manual-pdf-${Date.now()}`;
+
       const payload = {
         title: title.trim(),
-        drive_file_id: driveFileId.trim(),
+        drive_file_id: drivePayload,
         thumbnail_url: uploaded,
+        category_id: categoryId.trim() || null,
       };
 
       const res = editingId
@@ -238,36 +265,35 @@ export function CatalogManager() {
 
       const saved = (await res.json()) as Catalog;
 
-      // Auto → Supabase CDN (direct PDF file OR Drive sync)
+      // Always land PDF on Supabase CDN — site reads pdf_url first (fast)
       setCdnSyncing(true);
-      setSuccess("Catalog save ho gaya — CDN PDF upload ho rahi hai…");
+      setSuccess("Catalog save — Supabase CDN pe PDF ja rahi hai…");
       try {
         if (pdfFile) {
           await uploadCdnPdfToStorage(saved.id, pdfFile);
-          setSuccess("Catalog + CDN PDF ready — users ko jaldi open hogi.");
-        } else {
-          const prevDrive = editingId
-            ? catalogs.find((c) => c.id === editingId)?.drive_file_id
-            : null;
-          const driveChanged = Boolean(
-            prevDrive && prevDrive !== saved.drive_file_id
+          setSuccess(
+            "PDF Supabase CDN pe upload ho gayi — website wahan se fast load karegi."
           );
-          const sync = await syncCdnFromDrive(saved.id, driveChanged);
-          if (sync.skipped) {
-            setSuccess("Catalog update ho gaya — CDN PDF pehle se ready thi.");
+        } else {
+          const needsForce = !saved.pdf_url;
+          const sync = await syncCdnFromDrive(saved.id, needsForce);
+          if (sync.skipped && saved.pdf_url) {
+            setSuccess(
+              "Catalog update — CDN PDF pehle se ready (site Supabase se load karti hai)."
+            );
           } else {
             const mb = sync.bytes
-              ? ` (${Math.round(sync.bytes / 1024 / 1024)}MB)`
+              ? ` (${Math.round(Number(sync.bytes) / 1024 / 1024)}MB)`
               : "";
             setSuccess(
-              `Catalog save + CDN PDF auto upload ho gayi${mb}.`
+              `PDF Supabase CDN pe auto upload ho gayi${mb} — website wahan se fetch karti hai.`
             );
           }
         }
       } catch (cdnErr) {
         setError(
           (cdnErr instanceof Error ? cdnErr.message : "CDN upload fail") +
-            " — catalog save ho gaya; neeche se CDN PDF dubara try karein."
+            " — catalog save ho gaya; neeche se Upload CDN PDF try karein."
         );
         setSuccess("");
       } finally {
@@ -288,11 +314,39 @@ export function CatalogManager() {
     setEditingId(catalog.id);
     setTitle(catalog.title);
     setDriveFileId(catalog.drive_file_id);
+    setCategoryId(catalog.category_id || "");
     setExistingThumb(catalog.thumbnail_url);
     setThumbnailFile(null);
     setError("");
     setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function removeCdnPdf(catalogId: string, title: string) {
+    if (
+      !confirm(
+        `"${title}" ki CDN PDF Supabase se delete karni hai? Catalog reh jayegi; Drive fallback use hoga.`
+      )
+    ) {
+      return;
+    }
+    setPdfUploadingId(catalogId);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch(
+        `/api/admin/catalog-pdf?catalogId=${encodeURIComponent(catalogId)}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "PDF remove fail");
+      setSuccess(`CDN PDF remove ho gayi (Supabase se bhi): ${title}`);
+      await fetchCatalogs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "PDF remove fail");
+    } finally {
+      setPdfUploadingId(null);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -321,8 +375,10 @@ export function CatalogManager() {
         </div>
 
         <p className="text-sm text-text-secondary">
-          Name + Google Drive link enough hai. Save pe PDF <strong>auto Supabase CDN</strong>{" "}
-          pe chali jati hai. Optional: seedha PDF file bhi choose kar sakte ho.
+          PDF <strong>hamesha Supabase CDN</strong> pe auto upload hoti hai (file
+          choose karo YA Drive link). Website{" "}
+          <strong>CDN se fetch</strong> karti hai taake open tez ho. Drive link
+          optional hai agar aap PDF file upload kar rahe ho.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -338,16 +394,44 @@ export function CatalogManager() {
               />
             </div>
             <div>
-              <label className="admin-label">2. Google Drive Link / File ID</label>
+              <label className="admin-label">
+                Category{" "}
+                <span className="font-normal text-text-secondary">
+                  (website filter)
+                </span>
+              </label>
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="admin-input"
+              >
+                <option value="">— None (sirf ALL mein) —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-text-secondary">
+                Categories manage: Admin → Categories
+              </p>
+            </div>
+            <div>
+              <label className="admin-label">
+                2. Google Drive Link / File ID{" "}
+                <span className="font-normal text-text-secondary">
+                  (optional if PDF file below)
+                </span>
+              </label>
               <input
                 value={driveFileId}
                 onChange={(e) => setDriveFileId(e.target.value)}
                 className="admin-input"
                 placeholder="Drive share link paste karein"
-                required
               />
               <p className="mt-1 text-xs text-text-secondary">
-                Drive pe file &quot;Anyone with the link can view&quot; rakhein.
+                Drive pe file &quot;Anyone with the link can view&quot; rakhein —
+                warna seedha PDF file upload karein.
               </p>
             </div>
             <div>
@@ -368,7 +452,7 @@ export function CatalogManager() {
               <label className="admin-label">
                 4. PDF file{" "}
                 <span className="font-normal text-text-secondary">
-                  (optional — warna Drive se auto CDN)
+                  (recommended — seedha Supabase CDN)
                 </span>
               </label>
               <input
@@ -379,8 +463,8 @@ export function CatalogManager() {
               />
               <p className="mt-1 text-xs text-text-secondary">
                 {pdfFile
-                  ? `Selected: ${pdfFile.name}`
-                  : "Empty = Drive PDF auto Supabase pe upload hogi save ke baad."}
+                  ? `Selected: ${pdfFile.name} → save pe CDN pe jayegi`
+                  : "Empty + Drive link = Drive se auto CDN sync. PDF compress aap khud karke yahan upload kar sakte ho."}
               </p>
             </div>
           </div>
@@ -521,6 +605,9 @@ export function CatalogManager() {
                       {catalog.title}
                     </h3>
                     <p className="text-[11px] text-text-secondary">
+                      {categories.find((c) => c.id === catalog.category_id)
+                        ?.name || "No category"}
+                      {" · "}
                       {catalog.pdf_url
                         ? `CDN PDF ready${
                             catalog.pdf_bytes
@@ -547,6 +634,18 @@ export function CatalogManager() {
                           ? "Replace CDN PDF"
                           : "Upload CDN PDF"}
                     </label>
+                    {catalog.pdf_url && (
+                      <button
+                        type="button"
+                        className="admin-chip-danger w-full"
+                        disabled={cdnSyncing || pdfUploadingId === catalog.id}
+                        onClick={() => void removeCdnPdf(catalog.id, catalog.title)}
+                      >
+                        {pdfUploadingId === catalog.id
+                          ? "Removing…"
+                          : "Remove CDN PDF"}
+                      </button>
+                    )}
                     {!catalog.pdf_url && (
                       <button
                         type="button"

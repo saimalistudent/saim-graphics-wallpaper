@@ -6,18 +6,23 @@ import {
   createSupabaseAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/client";
-import { isSupabaseVisualUrl, VISUALS_BUCKET } from "@/lib/site-visuals";
+import { optimizeImageBuffer } from "@/lib/image-optimize";
+import {
+  isSupabaseVisualUrl,
+  VISUALS_BUCKET,
+  visualsObjectPath,
+} from "@/lib/site-visuals";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function readPublicWebp(rel: string): Buffer {
+function readPublicImage(rel: string): Buffer {
   const full = path.join(process.cwd(), "public", rel);
   if (!existsSync(full)) throw new Error(`Missing ${rel}`);
   return readFileSync(full);
 }
 
-/** One-click: local hero/promo → Supabase CDN + DB update */
+/** One-click: local hero/promo → optimized CDN WebP + DB update */
 export async function POST() {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,13 +37,17 @@ export async function POST() {
   const sb = createSupabaseAdminClient();
   const log: string[] = [];
 
-  async function upload(rel: string, objectPath: string) {
-    const buf = readPublicWebp(rel);
-    const { error } = await sb.storage.from(VISUALS_BUCKET).upload(objectPath, buf, {
-      contentType: "image/webp",
-      upsert: true,
-      cacheControl: "31536000",
-    });
+  async function uploadOptimized(rel: string, kind: "hero" | "promo") {
+    const raw = readPublicImage(rel);
+    const optimized = await optimizeImageBuffer(raw, kind);
+    const objectPath = visualsObjectPath(kind, optimized.ext);
+    const { error } = await sb.storage
+      .from(VISUALS_BUCKET)
+      .upload(objectPath, optimized.buffer, {
+        contentType: optimized.contentType,
+        upsert: true,
+        cacheControl: "31536000",
+      });
     if (error) throw new Error(error.message);
     const { data } = sb.storage.from(VISUALS_BUCKET).getPublicUrl(objectPath);
     return data.publicUrl;
@@ -61,10 +70,7 @@ export async function POST() {
     if (!rows.length) {
       const seeded = [];
       for (let i = 1; i <= 5; i++) {
-        const cdn = await upload(
-          `hero-slides/${i}.webp`,
-          `hero/seed-${i}.webp`
-        );
+        const cdn = await uploadOptimized(`hero-slides/${i}.webp`, "hero");
         seeded.push({
           image_url: cdn,
           sort_order: i,
@@ -82,10 +88,7 @@ export async function POST() {
           continue;
         }
         const n = Number(row.sort_order) || 1;
-        const cdn = await upload(
-          `hero-slides/${n}.webp`,
-          `hero/slide-${n}-${Date.now()}.webp`
-        );
+        const cdn = await uploadOptimized(`hero-slides/${n}.webp`, "hero");
         const { error } = await sb
           .from("hero_slides")
           .update({ image_url: cdn, updated_at: new Date().toISOString() })
@@ -112,10 +115,7 @@ export async function POST() {
     if (existing && isSupabaseVisualUrl(existing.image_url)) {
       log.push("promo already CDN");
     } else {
-      const cdn = await upload(
-        "promo-popup-sample.webp",
-        `promo/sample-${Date.now()}.webp`
-      );
+      const cdn = await uploadOptimized("promo-popup-sample.webp", "promo");
       if (existing?.id) {
         const { error } = await sb
           .from("promo_popup")
