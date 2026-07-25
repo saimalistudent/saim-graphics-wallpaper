@@ -1,6 +1,6 @@
 import { getDashboardStats } from "@/lib/analytics";
 import { DashboardClient } from "@/components/admin/DashboardClient";
-import Link from "next/link";
+import { AdminQuickActions } from "@/components/admin/AdminQuickActions";
 
 export const metadata = {
   title: "Dashboard | Admin",
@@ -13,16 +13,16 @@ export default async function AdminDashboardPage() {
   const stats = await getDashboardStats(30);
 
   return (
-    <div>
+    <div className="space-y-6">
       <div className="admin-page-head">
         <div>
           <h1 className="admin-page-title">Dashboard</h1>
-          <p className="admin-page-sub">Website visits and catalog views</p>
+          <p className="admin-page-sub">
+            Start here — pick a task below, or check your visit numbers.
+          </p>
         </div>
-        <Link href="/admin/catalogs" className="golden-button text-xs sm:text-sm">
-          Add Catalog
-        </Link>
       </div>
+      <AdminQuickActions />
       <DashboardClient stats={stats} />
     </div>
   );

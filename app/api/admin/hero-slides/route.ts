@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import {
   createSupabaseAdminClient,
@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest) {
     if (inserted.error) {
       return NextResponse.json({ error: inserted.error.message }, { status: 500 });
     }
-    revalidatePath("/");
+    revalidatePublicSite();
     return NextResponse.json(inserted.data as HeroSlide);
   }
 
@@ -151,6 +151,6 @@ export async function PUT(request: NextRequest) {
     await deleteStoredImage(supabase, previousUrl);
   }
 
-  revalidatePath("/");
+  revalidatePublicSite();
   return NextResponse.json(updated.data as HeroSlide);
 }

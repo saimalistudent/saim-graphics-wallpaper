@@ -3,6 +3,9 @@ import { getCatalogById } from "@/lib/catalogs";
 import { getContactSettings } from "@/lib/contact";
 import { PdfViewer } from "@/components/PdfViewer";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type Props = {
   params: Promise<{ id: string }>;
 };

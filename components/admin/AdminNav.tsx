@@ -8,12 +8,13 @@ import { cn } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 
 const adminLinks = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/catalogs", label: "Catalogs" },
+  { href: "/admin/dashboard", label: "Home" },
+  { href: "/admin/catalogs", label: "PDFs" },
+  { href: "/admin/trending", label: "Trending" },
   { href: "/admin/categories", label: "Categories" },
-  { href: "/admin/promo", label: "Promo" },
-  { href: "/admin/hero", label: "Hero" },
   { href: "/admin/contact", label: "Contact" },
+  { href: "/admin/hero", label: "Hero" },
+  { href: "/admin/promo", label: "Promo" },
 ];
 
 export function AdminNav() {

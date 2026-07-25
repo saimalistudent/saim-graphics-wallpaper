@@ -10,7 +10,7 @@ import {
   getDriveThumbnailUrl,
   isAutoDriveThumbnail,
 } from "@/lib/drive";
-import { ImageIcon, Pencil, Trash2, Plus, Sparkles } from "lucide-react";
+import { ImageIcon, Pencil, Trash2, Plus, Sparkles, ArrowUp, ArrowDown } from "lucide-react";
 
 export function CatalogManager() {
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
@@ -18,7 +18,7 @@ export function CatalogManager() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [driveFileId, setDriveFileId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -170,6 +170,7 @@ export function CatalogManager() {
         confirmData.error || "PDF save failed — run 004 migration?"
       );
     }
+    return confirmData as { preview_generated?: boolean; thumbnail_url?: string };
   }
 
   async function syncCdnFromDrive(catalogId: string, force = false) {
@@ -188,8 +189,12 @@ export function CatalogManager() {
     setError("");
     setSuccess("");
     try {
-      await uploadCdnPdfToStorage(catalogId, file);
-      setSuccess("PDF saved to CDN — site will load it from there.");
+      const saved = await uploadCdnPdfToStorage(catalogId, file);
+      setSuccess(
+        saved?.preview_generated
+          ? "PDF on CDN — page 1 preview generated for site + admin."
+          : "PDF on CDN. Preview missing — run npm run generate:previews or re-upload."
+      );
       await fetchCatalogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF upload failed");
@@ -198,10 +203,38 @@ export function CatalogManager() {
     }
   }
 
+  async function saveCatalogOrder(next: Catalog[]) {
+    setCatalogs(next);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/catalogs/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ordered_ids: next.map((c) => c.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Reorder failed");
+      setSuccess("Catalog order saved — live on /catalogs.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reorder failed");
+      await fetchCatalogs();
+    }
+  }
+
+  function moveCatalog(id: string, dir: -1 | 1) {
+    const i = catalogs.findIndex((c) => c.id === id);
+    if (i < 0) return;
+    const j = i + dir;
+    if (j < 0 || j >= catalogs.length) return;
+    const next = [...catalogs];
+    [next[i], next[j]] = [next[j], next[i]];
+    void saveCatalogOrder(next);
+  }
+
   function resetForm() {
     setTitle("");
     setDriveFileId("");
-    setCategoryId("");
+    setCategoryIds([]);
     setThumbnailFile(null);
     setPdfFile(null);
     setPreviewUrl(null);
@@ -209,6 +242,20 @@ export function CatalogManager() {
     setExistingThumb(null);
     setError("");
     setAutoThumbFailed(false);
+  }
+
+  function toggleCategory(id: string) {
+    setCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function categoryLabels(ids: string[] | undefined): string {
+    if (!ids?.length) return "No category";
+    const names = ids
+      .map((id) => categories.find((c) => c.id === id)?.name)
+      .filter(Boolean);
+    return names.length ? names.join(", ") : "No category";
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -241,7 +288,7 @@ export function CatalogManager() {
         title: title.trim(),
         drive_file_id: drivePayload,
         thumbnail_url: uploaded,
-        category_id: categoryId.trim() || null,
+        category_ids: categoryIds,
       };
 
       const res = editingId
@@ -268,8 +315,12 @@ export function CatalogManager() {
       setSuccess("Catalog saved — uploading PDF to CDN…");
       try {
         if (pdfFile) {
-          await uploadCdnPdfToStorage(saved.id, pdfFile);
-          setSuccess("PDF uploaded to CDN.");
+          const pdfSaved = await uploadCdnPdfToStorage(saved.id, pdfFile);
+          setSuccess(
+            pdfSaved?.preview_generated
+              ? "PDF on CDN — page 1 preview ready on site + admin."
+              : "PDF on CDN. Preview missing — re-upload or run generate:previews."
+          );
         } else {
           const needsForce = !saved.pdf_url;
           const sync = await syncCdnFromDrive(saved.id, needsForce);
@@ -306,7 +357,7 @@ export function CatalogManager() {
     setEditingId(catalog.id);
     setTitle(catalog.title);
     setDriveFileId(catalog.drive_file_id);
-    setCategoryId(catalog.category_id || "");
+    setCategoryIds(catalog.category_ids ?? []);
     setExistingThumb(catalog.thumbnail_url);
     setThumbnailFile(null);
     setError("");
@@ -362,88 +413,34 @@ export function CatalogManager() {
         <div className="flex items-center gap-2">
           <Plus className="h-5 w-5 text-gold" />
           <h2 className="admin-card-title">
-            {editingId ? "Edit Catalog" : "Add Catalog"}
+            {editingId ? "Edit PDF" : "Add new PDF"}
           </h2>
         </div>
 
-        <p className="text-sm text-text-secondary">
-          PDFs upload to <strong>Supabase CDN</strong> (file or Drive link). The
-          site loads from CDN for speed. Drive is optional if you upload a PDF.
-        </p>
+        <div className="admin-tip">
+          <strong>Easy steps:</strong> 1) Name → 2) Upload PDF → 3) Categories
+          (optional) → 4) Save. Preview = PDF page 1 (automatic).
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 space-y-4">
             <div>
-              <label className="admin-label">1. Catalog Name</label>
+              <label className="admin-label">1. Name (shows on website)</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="admin-input"
-                placeholder="Example: Kitchen Walls"
+                placeholder="Example: 3D Panaflex Wallpaper Pakistan – Kitchen"
                 required
               />
             </div>
             <div>
               <label className="admin-label">
-                Category{" "}
+                2. PDF file{" "}
                 <span className="font-normal text-text-secondary">
-                  (site filter)
-                </span>
-              </label>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="admin-input"
-              >
-                <option value="">— None (ALL only) —</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-text-secondary">
-                Manage categories under Admin → Categories
-              </p>
-            </div>
-            <div>
-              <label className="admin-label">
-                2. Google Drive Link / File ID{" "}
-                <span className="font-normal text-text-secondary">
-                  (optional if PDF below)
-                </span>
-              </label>
-              <input
-                value={driveFileId}
-                onChange={(e) => setDriveFileId(e.target.value)}
-                className="admin-input"
-                placeholder="Paste Drive share link"
-              />
-              <p className="mt-1 text-xs text-text-secondary">
-                Set Drive sharing to &quot;Anyone with the link&quot; — or upload
-                a PDF file instead.
-              </p>
-            </div>
-            <div>
-              <label className="admin-label">
-                3. Preview Photo{" "}
-                <span className="font-normal text-text-secondary">(optional)</span>
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setThumbnailFile(e.target.files?.[0] ?? null)}
-                className="admin-input file:mr-3 file:rounded-md file:border-0 file:bg-gold/15 file:px-3 file:py-1.5 file:text-sm file:text-burgundy"
-              />
-              <p className="mt-1 text-xs text-text-secondary">
-                Leave empty to auto-preview from PDF page 1.
-              </p>
-            </div>
-            <div>
-              <label className="admin-label">
-                4. PDF file{" "}
-                <span className="font-normal text-text-secondary">
-                  (recommended — direct to CDN)
+                  {editingId
+                    ? "(optional — leave empty to keep current)"
+                    : "(required)"}
                 </span>
               </label>
               <input
@@ -454,14 +451,78 @@ export function CatalogManager() {
               />
               <p className="mt-1 text-xs text-text-secondary">
                 {pdfFile
-                  ? `Selected: ${pdfFile.name} → uploads to CDN on save`
-                  : "Empty + Drive link = auto CDN sync from Drive."}
+                  ? `Selected: ${pdfFile.name}`
+                  : "Max 50MB. Preview is created from page 1 after save."}
               </p>
             </div>
+            <div>
+              <label className="admin-label">
+                3. Categories{" "}
+                <span className="font-normal text-text-secondary">
+                  (tap to select — can pick many)
+                </span>
+              </label>
+              {categories.length === 0 ? (
+                <p className="text-xs text-text-secondary mt-1">
+                  No categories yet — open <strong>Categories</strong> in the top
+                  menu first. Without categories it still shows under ALL.
+                </p>
+              ) : (
+                <div
+                  className="mt-1.5 flex flex-wrap gap-2"
+                  role="group"
+                  aria-label="Catalog categories"
+                >
+                  {categories.map((c) => {
+                    const active = categoryIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleCategory(c.id)}
+                        className={`admin-chip ${active ? "admin-chip-active" : ""}`}
+                        aria-pressed={active}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <details className="admin-advanced">
+              <summary>Advanced (optional)</summary>
+              <div className="space-y-4 pt-3">
+                <div>
+                  <label className="admin-label">Google Drive link</label>
+                  <input
+                    value={driveFileId}
+                    onChange={(e) => setDriveFileId(e.target.value)}
+                    className="admin-input"
+                    placeholder="Only if you use Drive instead of a PDF file"
+                  />
+                </div>
+                <div>
+                  <label className="admin-label">Custom preview photo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setThumbnailFile(e.target.files?.[0] ?? null)
+                    }
+                    className="admin-input file:mr-3 file:rounded-md file:border-0 file:bg-gold/15 file:px-3 file:py-1.5 file:text-sm file:text-burgundy"
+                  />
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Skip this — PDF page 1 is used automatically.
+                  </p>
+                </div>
+              </div>
+            </details>
           </div>
 
           <div>
-            <label className="admin-label">Live Preview</label>
+            <label className="admin-label">Preview</label>
             <div className={`admin-thumb-box ${usingAutoPreview ? "admin-thumb-auto" : ""}`}>
               {livePreview ? (
                 <>
@@ -490,7 +551,7 @@ export function CatalogManager() {
                   {usingAutoPreview && (
                     <span className="catalog-auto-badge admin-live-badge">
                       <Sparkles className="h-3 w-3" />
-                      Auto from PDF page 1
+                      Auto page 1
                     </span>
                   )}
                   <div className="catalog-preview-shine" aria-hidden />
@@ -499,7 +560,7 @@ export function CatalogManager() {
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-text-secondary px-3 text-center">
                   <ImageIcon className="h-8 w-8 opacity-40" />
                   <span className="text-xs">
-                    Paste a Drive link for auto preview
+                    After save, page 1 of your PDF appears here
                   </span>
                 </div>
               )}
@@ -507,26 +568,38 @@ export function CatalogManager() {
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {success && <p className="text-sm text-emerald-700">{success}</p>}
+        {error && (
+          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+        {success && (
+          <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+            {success}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <button
             type="submit"
-            className="golden-button text-sm"
+            className="golden-button text-sm min-h-11 px-6"
             disabled={submitting || cdnSyncing}
           >
             {submitting || cdnSyncing
               ? cdnSyncing
-                ? "CDN upload…"
-                : "Saving..."
+                ? "Uploading PDF…"
+                : "Saving…"
               : editingId
-                ? "Update Catalog"
-                : "Add Catalog"}
+                ? "Save changes"
+                : "Save PDF"}
           </button>
           {editingId && (
-            <button type="button" onClick={resetForm} className="admin-chip">
-              Cancel
+            <button
+              type="button"
+              onClick={resetForm}
+              className="admin-chip min-h-11"
+            >
+              Cancel edit
             </button>
           )}
         </div>
@@ -534,12 +607,11 @@ export function CatalogManager() {
 
       <div className="admin-card">
         <h2 className="admin-card-title mb-1">
-          Your Catalogs ({catalogs.length})
+          Your PDFs ({catalogs.length})
         </h2>
         <p className="text-sm text-text-secondary mb-5">
-          Edit or delete here. Use <strong>Upload CDN PDF</strong> so visitors
-          load from Storage. Or CLI:{" "}
-          <code className="text-xs">npm run migrate:pdfs</code>
+          ↑ ↓ = order on the website list (top = first). Replace PDF updates
+          file + preview automatically.
         </p>
 
         {loading ? (
@@ -596,18 +668,17 @@ export function CatalogManager() {
                       {catalog.title}
                     </h3>
                     <p className="text-[11px] text-text-secondary">
-                      {categories.find((c) => c.id === catalog.category_id)
-                        ?.name || "No category"}
+                      {categoryLabels(catalog.category_ids)}
                       {" · "}
                       {catalog.pdf_url
-                        ? `CDN PDF ready${
+                        ? `PDF ready${
                             catalog.pdf_bytes
                               ? ` · ${Math.round(catalog.pdf_bytes / 1024 / 1024)}MB`
                               : ""
                           }`
-                        : "CDN PDF missing — Drive fallback"}
+                        : "No PDF yet — upload below"}
                     </p>
-                    <label className="admin-chip w-full inline-flex items-center justify-center gap-1 cursor-pointer">
+                    <label className="admin-chip w-full inline-flex items-center justify-center gap-1 cursor-pointer min-h-10">
                       <input
                         type="file"
                         accept="application/pdf,.pdf"
@@ -620,27 +691,29 @@ export function CatalogManager() {
                         }}
                       />
                       {pdfUploadingId === catalog.id
-                        ? "Uploading PDF…"
+                        ? "Uploading…"
                         : catalog.pdf_url
-                          ? "Replace CDN PDF"
-                          : "Upload CDN PDF"}
+                          ? "Replace PDF"
+                          : "Upload PDF"}
                     </label>
                     {catalog.pdf_url && (
                       <button
                         type="button"
-                        className="admin-chip-danger w-full"
+                        className="admin-chip-danger w-full min-h-10"
                         disabled={cdnSyncing || pdfUploadingId === catalog.id}
                         onClick={() => void removeCdnPdf(catalog.id, catalog.title)}
                       >
                         {pdfUploadingId === catalog.id
                           ? "Removing…"
-                          : "Remove CDN PDF"}
+                          : "Remove PDF file"}
                       </button>
                     )}
-                    {!catalog.pdf_url && (
+                    {!catalog.pdf_url &&
+                      catalog.drive_file_id &&
+                      !catalog.drive_file_id.startsWith("manual-pdf-") && (
                       <button
                         type="button"
-                        className="admin-chip w-full"
+                        className="admin-chip w-full min-h-10"
                         disabled={cdnSyncing || pdfUploadingId === catalog.id}
                         onClick={() => {
                           void (async () => {
@@ -648,13 +721,13 @@ export function CatalogManager() {
                             setError("");
                             try {
                               await syncCdnFromDrive(catalog.id, true);
-                              setSuccess(`CDN sync OK: ${catalog.title}`);
+                              setSuccess(`Synced: ${catalog.title}`);
                               await fetchCatalogs();
                             } catch (err) {
                               setError(
                                 err instanceof Error
                                   ? err.message
-                                  : "CDN sync failed"
+                                  : "Sync failed"
                               );
                             } finally {
                               setPdfUploadingId(null);
@@ -662,10 +735,30 @@ export function CatalogManager() {
                           })();
                         }}
                       >
-                        Sync from Drive → CDN
+                        Import from Drive
                       </button>
                     )}
                     <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="admin-chip"
+                        aria-label="Move earlier"
+                        disabled={catalogs[0]?.id === catalog.id}
+                        onClick={() => moveCatalog(catalog.id, -1)}
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-chip"
+                        aria-label="Move later"
+                        disabled={
+                          catalogs[catalogs.length - 1]?.id === catalog.id
+                        }
+                        onClick={() => moveCatalog(catalog.id, 1)}
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={() => startEdit(catalog)}
                         className="admin-chip flex-1 inline-flex items-center justify-center gap-1"

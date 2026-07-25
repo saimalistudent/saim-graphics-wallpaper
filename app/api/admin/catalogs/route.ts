@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
+import {
+  parseCategoryIds,
+  replaceCatalogCategoryLinks,
+  selectCatalogsWithCategories,
+} from "@/lib/catalog-categories";
 import {
   applyCatalogThumbnailOverride,
   extractDriveFileId,
   resolveCatalogThumbnail,
 } from "@/lib/drive";
-import { Catalog } from "@/lib/types";
 
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
@@ -15,18 +19,13 @@ export async function GET() {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("catalogs")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const { data, error } = await selectCatalogsWithCategories(supabase);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error }, { status: 500 });
   }
 
-  return NextResponse.json(
-    ((data ?? []) as Catalog[]).map(applyCatalogThumbnailOverride)
-  );
+  return NextResponse.json(data.map(applyCatalogThumbnailOverride));
 }
 
 export async function POST(request: NextRequest) {
@@ -35,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { title, drive_file_id, thumbnail_url, category_id } = body;
+  const { title, drive_file_id, thumbnail_url, category_ids } = body;
 
   if (!title || !drive_file_id) {
     return NextResponse.json(
@@ -54,29 +53,78 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
   const supabase = createSupabaseAdminClient();
-  const catId =
-    typeof category_id === "string" && category_id.trim()
-      ? category_id.trim()
-      : null;
-  const { data, error } = await supabase
+  const ids = parseCategoryIds(category_ids);
+
+  // Place new catalogs at the end of the ALL list
+  const { data: lastRows } = await supabase
+    .from("catalogs")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const nextSort =
+    typeof lastRows?.[0]?.sort_order === "number"
+      ? (lastRows[0].sort_order as number) + 1
+      : 0;
+
+  let { data, error } = await supabase
     .from("catalogs")
     .insert({
       title,
       drive_file_id: fileId,
       thumbnail_url: resolveCatalogThumbnail(fileId, thumbnail_url) || null,
-      category_id: catId,
+      sort_order: nextSort,
+      is_featured: false,
+      featured_sort_order: 0,
     })
     .select()
     .single();
+
+  // Pre-010 fallback
+  if (error && /sort_order|is_featured|featured_sort/i.test(error.message)) {
+    ({ data, error } = await supabase
+      .from("catalogs")
+      .insert({
+        title,
+        drive_file_id: fileId,
+        thumbnail_url: resolveCatalogThumbnail(fileId, thumbnail_url) || null,
+      })
+      .select()
+      .single());
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
-  return NextResponse.json(data, { status: 201 });
+  const linkResult = await replaceCatalogCategoryLinks(
+    supabase,
+    data.id as string,
+    ids
+  );
+  if (linkResult.error) {
+    return NextResponse.json(
+      {
+        error:
+          linkResult.error +
+          " — Run 009_catalog_multi_categories.sql in Supabase?",
+      },
+      { status: 500 }
+    );
+  }
+
+  const { data: withCats } = await selectCatalogsWithCategories(supabase, {
+    id: data.id as string,
+  });
+
+  revalidatePublicSite(data.id as string);
+  return NextResponse.json(
+    applyCatalogThumbnailOverride(
+      withCats[0] ?? { ...data, category_ids: ids }
+    ),
+    { status: 201 }
+  );
 }
 
 export async function PUT(request: NextRequest) {
@@ -85,7 +133,8 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { id, title, drive_file_id, thumbnail_url, category_id } = body;
+  const { id, title, drive_file_id, thumbnail_url, category_ids, sort_order } =
+    body;
 
   if (!id || !title || !drive_file_id) {
     return NextResponse.json(
@@ -114,11 +163,8 @@ export async function PUT(request: NextRequest) {
     updates.thumbnail_url =
       resolveCatalogThumbnail(fileId, thumbnail_url) || null;
   }
-  if (category_id !== undefined) {
-    updates.category_id =
-      typeof category_id === "string" && category_id.trim()
-        ? category_id.trim()
-        : null;
+  if (typeof sort_order === "number" && Number.isFinite(sort_order)) {
+    updates.sort_order = Math.floor(sort_order);
   }
 
   const { data, error } = await supabase
@@ -132,9 +178,31 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
-  return NextResponse.json(data);
+  if (category_ids !== undefined) {
+    const ids = parseCategoryIds(category_ids);
+    const linkResult = await replaceCatalogCategoryLinks(supabase, id, ids);
+    if (linkResult.error) {
+      return NextResponse.json(
+        {
+          error:
+            linkResult.error +
+            " — Run 009_catalog_multi_categories.sql in Supabase?",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  const { data: withCats } = await selectCatalogsWithCategories(supabase, {
+    id,
+  });
+
+  revalidatePublicSite(id);
+  return NextResponse.json(
+    applyCatalogThumbnailOverride(
+      withCats[0] ?? { ...data, category_ids: parseCategoryIds(category_ids) }
+    )
+  );
 }
 
 export async function DELETE(request: NextRequest) {
@@ -175,7 +243,6 @@ export async function DELETE(request: NextRequest) {
     await deleteStorageObject(THUMB_BUCKET, thumbPath);
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
+  revalidatePublicSite(id);
   return NextResponse.json({ success: true });
 }

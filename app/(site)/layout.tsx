@@ -11,6 +11,10 @@ import { getCatalogs } from "@/lib/catalogs";
 import { getContactSettings } from "@/lib/contact";
 import { catalogPreviewSrc } from "@/lib/catalog-preview";
 
+/** Always fresh — admin edits (contact, promo, hero, catalogs) must show immediately */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function SiteLayout({
   children,
 }: {

@@ -1,87 +1,95 @@
-import { Catalog } from "@/lib/types";
+import { Catalog, FeaturedSettings } from "@/lib/types";
 import { applyCatalogThumbnailOverride } from "@/lib/drive";
-import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { selectCatalogsWithCategories } from "@/lib/catalog-categories";
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/client";
+
+const DEFAULT_FEATURED_COUNT = 8;
 
 export async function getCatalogs(): Promise<Catalog[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("catalogs")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const { data, error } = await selectCatalogsWithCategories(supabase);
 
   if (error) {
-    console.error("Failed to fetch catalogs:", error.message);
+    console.error("Failed to fetch catalogs:", error);
     return [];
   }
 
-  return ((data ?? []) as Catalog[]).map(applyCatalogThumbnailOverride);
+  return data.map(applyCatalogThumbnailOverride);
 }
 
 export async function getCatalogById(id: string): Promise<Catalog | null> {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("catalogs")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const { data, error } = await selectCatalogsWithCategories(supabase, {
+    id,
+  });
 
   if (error) {
-    console.error("Failed to fetch catalog:", error.message);
+    console.error("Failed to fetch catalog:", error);
     return null;
   }
 
-  return applyCatalogThumbnailOverride(data as Catalog);
+  const catalog = data[0];
+  return catalog ? applyCatalogThumbnailOverride(catalog) : null;
 }
 
-/** Preferred Featured Designs order (home page top) */
-export const FEATURED_CATALOG_TITLES = [
-  "SG D1 (6) crown room",
-  "SG D1 (36) gracefull full room",
-  "SG D1 (23) full room",
-  "SG D1 (20) opal room",
-  "SG D1 (15) plain design",
-  "SG D1 (3) matt design",
-  "SG D1 (25) full room",
-  "SG D1 (21) single wall luxuary",
-] as const;
+export async function getFeaturedSettings(): Promise<FeaturedSettings> {
+  const fallback: FeaturedSettings = {
+    id: 1,
+    display_count: DEFAULT_FEATURED_COUNT,
+    updated_at: new Date(0).toISOString(),
+  };
 
-function normalizeTitle(title: string) {
-  return title.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!isSupabaseConfigured()) return fallback;
+
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("featured_settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (error || !data) return fallback;
+    const count = Number((data as FeaturedSettings).display_count);
+    return {
+      ...(data as FeaturedSettings),
+      display_count:
+        Number.isFinite(count) && count > 0
+          ? Math.min(24, Math.floor(count))
+          : DEFAULT_FEATURED_COUNT,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
-export async function getFeaturedCatalogs(limit = 8): Promise<Catalog[]> {
+/** Home “3D Trending Designs” — admin-controlled featured list + display count */
+export async function getFeaturedCatalogs(limit?: number): Promise<Catalog[]> {
   const catalogs = await getCatalogs();
   if (catalogs.length === 0) return [];
 
-  const byNorm = new Map(
-    catalogs.map((c) => [normalizeTitle(c.title), c] as const)
-  );
+  const settings = await getFeaturedSettings();
+  const max = limit ?? settings.display_count;
 
-  const featured: Catalog[] = [];
-  const used = new Set<string>();
+  const featured = catalogs
+    .filter((c) => c.is_featured)
+    .sort(
+      (a, b) =>
+        (a.featured_sort_order ?? 0) - (b.featured_sort_order ?? 0) ||
+        (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    );
 
-  for (const preferred of FEATURED_CATALOG_TITLES) {
-    const match = byNorm.get(normalizeTitle(preferred));
-    if (match && !used.has(match.id)) {
-      featured.push(match);
-      used.add(match.id);
-    }
-    if (featured.length >= limit) break;
+  if (featured.length > 0) {
+    return featured.slice(0, max);
   }
 
-  // Fill remaining slots if some titles were missing
-  if (featured.length < limit) {
-    for (const catalog of catalogs) {
-      if (used.has(catalog.id)) continue;
-      featured.push(catalog);
-      used.add(catalog.id);
-      if (featured.length >= limit) break;
-    }
-  }
-
-  return featured;
+  // No featured picks yet — show first N by catalog list order
+  return catalogs.slice(0, max);
 }

@@ -84,9 +84,49 @@ export async function cacheDriveFirstPageThumb(
   }
 }
 
+/** pdfjs + @napi-rs/canvas — works on Windows where sharp/libvips PDF is unavailable. */
+async function renderPdfFirstPageWithPdfjs(
+  pdfBytes: Buffer
+): Promise<Buffer | null> {
+  try {
+    const { createCanvas } = await import("@napi-rs/canvas");
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const data = new Uint8Array(pdfBytes);
+    const doc = await pdfjs.getDocument({
+      data,
+      useSystemFonts: true,
+      disableFontFace: true,
+    }).promise;
+    try {
+      const page = await doc.getPage(1);
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.min(1.5, 800 / Math.max(base.width, 1));
+      const viewport = page.getViewport({ scale });
+      const w = Math.max(1, Math.min(1200, Math.ceil(viewport.width)));
+      const h = Math.max(1, Math.min(1600, Math.ceil(viewport.height)));
+      const canvas = createCanvas(w, h);
+      const ctx = canvas.getContext("2d");
+      const fitVp = page.getViewport({
+        scale: Math.min(w / base.width, h / base.height),
+      });
+      await page.render({
+        canvasContext: ctx as unknown as CanvasRenderingContext2D,
+        viewport: fitVp,
+        canvas: canvas as unknown as HTMLCanvasElement,
+      }).promise;
+      const out = canvas.toBuffer("image/webp");
+      return out.byteLength > 500 ? out : null;
+    } finally {
+      await doc.cleanup?.();
+    }
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Best-effort first page render from PDF bytes via sharp (when libvips PDF works).
- * Returns null if unsupported on this host — caller should keep Drive/auto thumb.
+ * Best-effort first page render → WebP.
+ * Tries sharp (libvips PDF) first, then pdfjs + @napi-rs/canvas (Windows-safe).
  */
 export async function renderPdfFirstPageWebp(
   pdfBytes: Buffer
@@ -97,10 +137,11 @@ export async function renderPdfFirstPageWebp(
       .resize({ width: 800, withoutEnlargement: true })
       .webp({ quality: 88, effort: 4 })
       .toBuffer();
-    return out.byteLength > 500 ? out : null;
+    if (out.byteLength > 500) return out;
   } catch {
-    return null;
+    // sharp PDF unsupported on many Windows hosts
   }
+  return renderPdfFirstPageWithPdfjs(pdfBytes);
 }
 
 export async function uploadFirstPageWebp(
