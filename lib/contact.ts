@@ -46,16 +46,36 @@ export function toTelHref(input: string | null | undefined): string {
   return `tel:+${digits}`;
 }
 
-/** Shared WhatsApp deep link — same target from popup + PDF viewer button */
+/** Shared WhatsApp deep link — Meta universal send URL (popup + PDF viewer) */
 export function toWhatsAppHref(
   input: string | null | undefined,
   message?: string
 ): string {
   const digits = normalizePkPhone(input);
   if (!digits) return "";
-  const base = `https://wa.me/${digits}`;
-  if (!message?.trim()) return base;
-  return `${base}?text=${encodeURIComponent(message)}`;
+  const params = new URLSearchParams({ phone: digits });
+  if (message?.trim()) params.set("text", message.trim());
+  return `https://api.whatsapp.com/send?${params.toString()}`;
+}
+
+function isMobileWhatsAppUa(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+/**
+ * Open WhatsApp chat without Android Custom Tabs → Business mismatch.
+ * Mobile: same-tab assign so the OS opens WhatsApp / Business / chooser.
+ * Desktop: leave default anchor behavior (new tab → web.whatsapp.com).
+ */
+export function openWhatsAppChat(
+  href: string,
+  event?: { preventDefault(): void }
+): void {
+  if (!href || typeof window === "undefined") return;
+  if (!isMobileWhatsAppUa()) return;
+  event?.preventDefault();
+  window.location.assign(href);
 }
 
 export function getWhatsAppScreenshotMessage(catalogTitle: string): string {

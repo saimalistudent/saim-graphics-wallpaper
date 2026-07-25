@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Phone, X } from "lucide-react";
 import { ContactSettings } from "@/lib/types";
-import { toTelHref, toWhatsAppHref } from "@/lib/contact";
+import { openWhatsAppChat, toTelHref, toWhatsAppHref } from "@/lib/contact";
 
 /** Official WhatsApp glyph (uses currentColor so button gradient shows through) */
 function WhatsAppGlyph({ className }: { className?: string }) {
@@ -179,6 +179,7 @@ export function ContactPopup({ open, onClose, settings }: Props) {
                   rel="noopener noreferrer"
                   className="contact-popup-wa-btn"
                   aria-label="Open WhatsApp chat"
+                  onClick={(e) => openWhatsAppChat(waHref, e)}
                 >
                   <WhatsAppGlyph className="h-5 w-5" />
                   <span>{waLabel}</span>

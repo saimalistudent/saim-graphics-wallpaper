@@ -191,7 +191,9 @@ export function ContactManager() {
             <p className="mt-1 text-xs text-text-secondary">
               Chat opens at{" "}
               <span className="font-mono">
-                {waDigits ? `wa.me/${waDigits}` : "—"}
+                {waDigits
+                  ? `api.whatsapp.com/send?phone=${waDigits}`
+                  : "—"}
               </span>{" "}
               (also used by PDF viewer)
             </p>

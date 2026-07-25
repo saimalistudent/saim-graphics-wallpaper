@@ -23,6 +23,7 @@ import { Catalog, ContactSettings } from "@/lib/types";
 import { getDriveDownloadUrl } from "@/lib/drive";
 import {
   getWhatsAppScreenshotMessage,
+  openWhatsAppChat,
   toWhatsAppHref,
 } from "@/lib/contact";
 import {
@@ -1130,6 +1131,7 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
           target="_blank"
           rel="noopener noreferrer"
           className="pdf-action-whatsapp"
+          onClick={(e) => openWhatsAppChat(whatsappUrl, e)}
         >
           <MessageCircle className="h-4 w-4 shrink-0" />
           <span>WhatsApp</span>
