@@ -58,24 +58,60 @@ export function toWhatsAppHref(
   return `https://api.whatsapp.com/send?${params.toString()}`;
 }
 
-function isMobileWhatsAppUa(): boolean {
+function isAndroidUa(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  return /Android/i.test(navigator.userAgent);
+}
+
+function isIosUa(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 /**
- * Open WhatsApp chat without Android Custom Tabs → Business mismatch.
- * Mobile: same-tab assign so the OS opens WhatsApp / Business / chooser.
- * Desktop: leave default anchor behavior (new tab → web.whatsapp.com).
+ * Open WhatsApp Messenger directly on mobile (never Business via https).
+ * Android: intent:// with package=com.whatsapp.
+ * iOS: whatsapp:// consumer scheme.
+ * Desktop: leave default <a target="_blank"> (api.whatsapp.com → web).
  */
 export function openWhatsAppChat(
   href: string,
   event?: { preventDefault(): void }
 ): void {
   if (!href || typeof window === "undefined") return;
-  if (!isMobileWhatsAppUa()) return;
+
+  const android = isAndroidUa();
+  const ios = isIosUa();
+  if (!android && !ios) return;
+
   event?.preventDefault();
-  window.location.assign(href);
+
+  let phone = "";
+  let text = "";
+  try {
+    const url = new URL(href, window.location.origin);
+    phone = url.searchParams.get("phone") ?? "";
+    text = url.searchParams.get("text") ?? "";
+  } catch {
+    window.location.assign(href);
+    return;
+  }
+
+  const params = new URLSearchParams();
+  if (phone) params.set("phone", phone);
+  if (text) params.set("text", text);
+  const query = params.toString();
+
+  if (android) {
+    const intent =
+      `intent://send/?${query}` +
+      `#Intent;scheme=whatsapp;package=com.whatsapp;` +
+      `S.browser_fallback_url=${encodeURIComponent(href)};end`;
+    window.location.assign(intent);
+    return;
+  }
+
+  window.location.assign(`whatsapp://send?${query}`);
 }
 
 export function getWhatsAppScreenshotMessage(catalogTitle: string): string {
