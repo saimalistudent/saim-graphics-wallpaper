@@ -10,8 +10,20 @@ export type Catalog = {
   pdf_path?: string | null;
   /** Byte size for prefetch decisions */
   pdf_bytes?: number | null;
-  /** Optional design category (BED, ROOM, …) */
-  category_id?: string | null;
+  /** Design categories (multi) — empty = ALL only / uncategorized */
+  category_ids: string[];
+  /** Position on /catalogs (ALL) — lower = first */
+  sort_order?: number;
+  /** Show in home “3D Trending Designs” */
+  is_featured?: boolean;
+  /** Position within trending — lower = first */
+  featured_sort_order?: number;
+};
+
+export type FeaturedSettings = {
+  id: number;
+  display_count: number;
+  updated_at: string;
 };
 
 export type CatalogCategory = {

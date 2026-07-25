@@ -4,20 +4,30 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/client";
 
-function localDayKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+/** Pakistan calendar day YYYY-MM-DD (matches dashboard RPC). */
+function pakistanDayKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Karachi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 function emptyDaySeries(days: number): { date: string; count: number }[] {
+  const parts = pakistanDayKey(new Date()).split("-").map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const d = parts[2];
+  // Noon UTC on that Karachi calendar date — safe day stepping (no PK DST)
+  const anchor = Date.UTC(y, m - 1, d, 12, 0, 0);
   const out: { date: string; count: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setHours(12, 0, 0, 0);
-    d.setDate(d.getDate() - i);
-    out.push({ date: localDayKey(d), count: 0 });
+    const t = new Date(anchor - i * 86_400_000);
+    const yy = t.getUTCFullYear();
+    const mm = String(t.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(t.getUTCDate()).padStart(2, "0");
+    out.push({ date: `${yy}-${mm}-${dd}`, count: 0 });
   }
   return out;
 }
@@ -30,7 +40,7 @@ function groupVisitsByDay(
   const counts = new Map(series.map((s) => [s.date, 0]));
 
   for (const visit of visits) {
-    const date = localDayKey(new Date(visit.timestamp));
+    const date = pakistanDayKey(new Date(visit.timestamp));
     if (counts.has(date)) {
       counts.set(date, (counts.get(date) ?? 0) + 1);
     }
@@ -52,8 +62,7 @@ export async function getDashboardStats(days = 30): Promise<DashboardStats> {
   try {
     const supabase = createSupabaseAdminClient();
     const since = new Date();
-    since.setHours(0, 0, 0, 0);
-    since.setDate(since.getDate() - (days - 1));
+    since.setUTCDate(since.getUTCDate() - (days + 1));
 
     const [
       visitsCountRes,
@@ -80,10 +89,7 @@ export async function getDashboardStats(days = 30): Promise<DashboardStats> {
         viewCounts.set(row.catalog_id, Number(row.view_count) || 0);
       }
     } else {
-      // Fallback before 008 migration — may undercount past PostgREST row cap
-      const pdfViewsRes = await supabase
-        .from("pdf_views")
-        .select("catalog_id");
+      const pdfViewsRes = await supabase.from("pdf_views").select("catalog_id");
       for (const view of pdfViewsRes.data ?? []) {
         if (!view.catalog_id) continue;
         viewCounts.set(
@@ -115,6 +121,11 @@ export async function getDashboardStats(days = 30): Promise<DashboardStats> {
     const mostViewed = catalogs
       .map((catalog) => ({
         ...catalog,
+        category_ids: Array.isArray(
+          (catalog as { category_ids?: string[] }).category_ids
+        )
+          ? (catalog as { category_ids: string[] }).category_ids
+          : [],
         view_count: viewCounts.get(catalog.id) ?? 0,
       }))
       .filter((c) => c.view_count > 0)

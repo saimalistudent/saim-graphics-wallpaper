@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import {
   createSupabaseAdminClient,
@@ -133,6 +133,6 @@ export async function PUT(request: NextRequest) {
     await deleteStoredPromoImage(supabase, previousImageUrl);
   }
 
-  revalidatePath("/");
+  revalidatePublicSite();
   return NextResponse.json(result.data as PromoPopup);
 }

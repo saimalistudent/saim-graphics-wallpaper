@@ -9,9 +9,10 @@ export default function AdminCatalogsPage() {
     <div>
       <div className="admin-page-head">
         <div>
-          <h1 className="admin-page-title">Catalog Manager</h1>
+          <h1 className="admin-page-title">PDFs</h1>
           <p className="admin-page-sub">
-            Add, edit, or delete PDF catalogs
+            Simple: name → upload PDF → pick categories → Save. Preview comes
+            from page 1 automatically.
           </p>
         </div>
       </div>

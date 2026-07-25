@@ -25,11 +25,12 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const chartData = stats.visitsByDay.slice(-days);
+  const rangeTotal = chartData.reduce((sum, d) => sum + (d.count || 0), 0);
 
   async function resetStats() {
     if (
       !confirm(
-        "Reset all website visits and PDF open counts to 0? This cannot be undone."
+        "Reset website visits and PDF open counts to 0?\n\nCatalogs, PDFs, and designs will NOT be deleted."
       )
     ) {
       return;
@@ -54,7 +55,8 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
-          Live counts — reset deletes previous visit records.
+          Live analytics only — reset clears visit/PDF-open counts, not catalogs
+          or designs.
         </p>
         <button
           type="button"
@@ -92,16 +94,18 @@ export function DashboardClient({ stats }: DashboardClientProps) {
       </div>
 
       <div className="admin-card">
-        <div className="flex items-center justify-between mb-5 gap-3">
+        <div className="flex flex-wrap items-center justify-between mb-2 gap-3">
           <h2 className="admin-card-title">Visits Over Time</h2>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setDays(7)}
               className={`admin-chip ${days === 7 ? "admin-chip-active" : ""}`}
             >
               7 days
             </button>
             <button
+              type="button"
               onClick={() => setDays(30)}
               className={`admin-chip ${days === 30 ? "admin-chip-active" : ""}`}
             >
@@ -109,17 +113,24 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             </button>
           </div>
         </div>
+        <p className="text-xs text-text-secondary mb-4">
+          {rangeTotal} visit{rangeTotal === 1 ? "" : "s"} in the last {days} days
+          (Pakistan time). One browser session = 1 visit.
+        </p>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8e0d4" />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12 }}
-              tickFormatter={(v) => v.slice(5)}
+              tickFormatter={(v) => String(v).slice(5)}
             />
             <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="count" fill="#C9A227" radius={[4, 4, 0, 0]} />
+            <Tooltip
+              formatter={(value) => [`${value ?? 0}`, "Visits"]}
+              labelFormatter={(label) => `Date: ${label}`}
+            />
+            <Bar dataKey="count" name="Visits" fill="#C9A227" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

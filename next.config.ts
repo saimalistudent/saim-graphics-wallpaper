@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "localhost",
   ],
   transpilePackages: ["pdfjs-dist"],
+  serverExternalPackages: ["@napi-rs/canvas", "sharp"],
   images: {
     localPatterns: [
       { pathname: "/logo.webp" },

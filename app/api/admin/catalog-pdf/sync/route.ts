@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { isAutoDriveThumbnail } from "@/lib/drive";
@@ -156,8 +156,7 @@ export async function POST(request: NextRequest) {
     await deleteStorageObject(PDF_BUCKET, previousPath);
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
+  revalidatePublicSite(catalogId);
   return NextResponse.json({
     skipped: false,
     catalog: updated,

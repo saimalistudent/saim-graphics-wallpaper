@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { isAdminAuthenticated } from "@/lib/auth";
@@ -136,7 +136,7 @@ export async function POST() {
       log.push("promo → CDN");
     }
 
-    revalidatePath("/");
+    revalidatePublicSite();
     return NextResponse.json({ ok: true, log });
   } catch (e) {
     return NextResponse.json(

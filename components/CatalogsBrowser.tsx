@@ -14,8 +14,11 @@ export function CatalogsBrowser({ catalogs, categories }: Props) {
   const [selected, setSelected] = useState<string>("all");
 
   const filtered = useMemo(() => {
+    // ALL: every catalog once (source list is already unique by id)
     if (selected === "all") return catalogs;
-    return catalogs.filter((c) => c.category_id === selected);
+    return catalogs.filter((c) =>
+      (c.category_ids ?? []).includes(selected)
+    );
   }, [catalogs, selected]);
 
   return (

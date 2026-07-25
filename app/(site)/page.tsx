@@ -5,9 +5,12 @@ import { getFeaturedCatalogs } from "@/lib/catalogs";
 import { getHeroSlides } from "@/lib/hero-slides";
 import { ScrollRestore } from "@/components/ScrollRestore";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function HomePage() {
   const [catalogs, slides] = await Promise.all([
-    getFeaturedCatalogs(8),
+    getFeaturedCatalogs(),
     getHeroSlides(),
   ]);
 

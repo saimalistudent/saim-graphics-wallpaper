@@ -1,10 +1,16 @@
+import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { isAdminAuthenticated } from "@/lib/auth";
 
-export default function AdminProtectedLayout({
+export default async function AdminProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (!(await isAdminAuthenticated())) {
+    redirect("/admin/login");
+  }
+
   return (
     <div className="admin-shell min-h-screen">
       <AdminNav />

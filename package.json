@@ -11,9 +11,11 @@
     "migrate:pdfs": "tsx scripts/migrate-drive-to-storage.ts",
     "migrate:visuals": "tsx scripts/migrate-site-visuals-to-storage.ts",
     "restore:pdfs": "tsx scripts/restore-original-pdfs.ts",
-    "compress:visuals": "tsx scripts/compress-site-visuals.ts"
+    "compress:visuals": "tsx scripts/compress-site-visuals.ts",
+    "generate:previews": "tsx scripts/generate-catalog-previews.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
     "@supabase/supabase-js": "^2.49.1",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.475.0",

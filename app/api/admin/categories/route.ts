@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 
@@ -69,8 +69,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
+  revalidatePublicSite();
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -110,8 +109,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
+  revalidatePublicSite();
   return NextResponse.json(data);
 }
 
@@ -126,7 +124,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
-  // catalogs.category_id → ON DELETE SET NULL
+  // catalog_category_links.category_id → ON DELETE CASCADE
   const { error } = await supabase
     .from("catalog_categories")
     .delete()
@@ -136,7 +134,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
+  revalidatePublicSite();
   return NextResponse.json({ success: true });
 }

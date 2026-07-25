@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import {
   createSupabaseAdminClient,
@@ -121,6 +121,6 @@ export async function PUT(request: NextRequest) {
   }
 
   // Site layout + PDF viewer page both read this — invalidate the whole tree
-  revalidatePath("/", "layout");
+  revalidatePublicSite();
   return NextResponse.json(result.data as ContactSettings);
 }

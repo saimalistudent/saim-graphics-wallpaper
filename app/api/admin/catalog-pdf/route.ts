@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePublicSite } from "@/lib/revalidate-site";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import {
@@ -174,9 +174,11 @@ export async function PUT(request: NextRequest) {
     await deleteStorageObject(PDF_BUCKET, oldPath);
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
-  return NextResponse.json(updated);
+  revalidatePublicSite(catalogId);
+  return NextResponse.json({
+    ...updated,
+    preview_generated: Boolean(thumbUrl),
+  });
 }
 
 /** Remove CDN PDF from Storage + clear pdf_* fields (catalog row stays). */
@@ -228,7 +230,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  revalidatePath("/catalogs");
-  revalidatePath("/");
+  revalidatePublicSite(catalogId);
   return NextResponse.json(updated);
 }
