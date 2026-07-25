@@ -16,6 +16,11 @@
   --font-body: var(--font-inter);
 }
 
+.font-urdu {
+  font-family: var(--font-urdu), "Noto Sans Arabic", Tahoma, sans-serif;
+  line-height: 1.7;
+}
+
 body {
   background: var(--color-background);
   color: #1a1a1a;
@@ -34,6 +39,88 @@ html {
 .wa-fab {
   right: max(1rem, env(safe-area-inset-right));
   bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.wa-fab-btn {
+  background: linear-gradient(135deg, #2fdb75 0%, #1fa851 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 10px 26px -6px rgba(37, 211, 102, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease;
+}
+
+.wa-fab-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow:
+    0 16px 34px -6px rgba(37, 211, 102, 0.65),
+    0 6px 14px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.wa-fab-btn:active {
+  transform: translateY(0) scale(0.93);
+  box-shadow:
+    0 6px 16px -4px rgba(37, 211, 102, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.wa-fab-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid var(--color-whatsapp);
+  opacity: 0;
+  pointer-events: none;
+  animation: wa-fab-ring-pulse 1.9s ease-out 0.5s 3;
+}
+
+.wa-fab-ring-delay {
+  animation-delay: 1.15s;
+}
+
+@keyframes wa-fab-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.wa-fab-label {
+  animation: wa-fab-label-in 0.5s ease-out 0.75s both;
+}
+
+@keyframes wa-fab-label-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wa-fab-btn {
+    transition: none;
+  }
+
+  .wa-fab-ring {
+    display: none;
+  }
+
+  .wa-fab-label {
+    animation: none;
+  }
 }
 
 .site-main-pad {
@@ -1357,12 +1444,14 @@ h6 {
     box-shadow 0.2s ease;
 }
 
-.catalog-category-chip:hover {
+.catalog-category-chip:not(.catalog-category-chip--active):hover {
   border-color: rgba(201, 162, 39, 0.65);
   color: #6b0a0a;
 }
 
-.catalog-category-chip--active {
+.catalog-category-chip--active,
+.catalog-category-chip--active:hover,
+.catalog-category-chip--active:focus {
   background: linear-gradient(160deg, #6b0a0a 0%, #4a0404 50%, #2d0202 100%);
   color: #fef1a2;
   border-color: rgba(232, 197, 71, 0.7);
@@ -1538,7 +1627,7 @@ html.pdf-viewing .pdf-page-inner {
   font-size: 0.7rem;
   line-height: 1.4;
   color: var(--color-text-secondary);
-  text-align: left;
+  text-align: right;
   padding: 0.35rem 0.55rem;
   border-radius: 0.45rem;
   border: 1px solid rgba(201, 162, 39, 0.22);
@@ -1593,7 +1682,7 @@ html.pdf-viewing .pdf-page-inner {
   gap: 0.65rem;
   width: 100%;
   max-width: 100%;
-  padding: 0.4rem 0.35rem 1.25rem;
+  padding: 0.4rem 0 1.25rem;
   box-sizing: border-box;
   align-items: stretch;
 }
@@ -2176,5 +2265,227 @@ html.pdf-viewing .pdf-page-inner {
   .promo-popup-close:hover,
   .promo-popup-close:active {
     transform: none;
+  }
+}
+
+/* Contact popup — Call + WhatsApp choice (matches burgundy/gold brand) */
+.contact-popup-root {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.1rem;
+  pointer-events: none;
+}
+
+.contact-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgba(12, 6, 8, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.contact-popup-shell {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  width: min(100%, 22rem);
+  max-height: min(92vh, 40rem);
+  overflow-y: auto;
+  border-radius: 1rem;
+  padding: 1.6rem 1.25rem 1.35rem;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(201, 162, 39, 0.14), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #faf6f0 100%);
+  border: 1px solid rgba(201, 162, 39, 0.5);
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  will-change: transform, opacity;
+}
+
+.contact-popup-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 4, 4, 0.18);
+  background: rgba(74, 4, 4, 0.05);
+  color: #4a0404;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.contact-popup-close:hover {
+  background: rgba(74, 4, 4, 0.12);
+  border-color: rgba(74, 4, 4, 0.3);
+  transform: scale(1.05);
+}
+
+.contact-popup-close:active {
+  transform: scale(0.95);
+}
+
+.contact-popup-close:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.65);
+  outline-offset: 2px;
+}
+
+.contact-popup-title {
+  margin: 0.1rem 0 0.2rem;
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #4a0404;
+  text-align: center;
+}
+
+.contact-popup-sub {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8b6914;
+  text-align: center;
+}
+
+.contact-popup-section {
+  padding: 0.9rem 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(201, 162, 39, 0.3);
+  box-shadow: 0 4px 14px rgba(74, 4, 4, 0.05);
+}
+
+.contact-popup-section + .contact-popup-section {
+  margin-top: 0.75rem;
+}
+
+.contact-popup-urdu {
+  margin: 0 0 0.8rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #2d0202;
+  text-align: right;
+}
+
+.contact-popup-call-btn,
+.contact-popup-wa-btn {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.9rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.contact-popup-call-btn {
+  color: #fef1a2;
+  background: linear-gradient(160deg, #1a1a1a 0%, #000000 55%, #1a1a1a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.contact-popup-call-btn:hover {
+  filter: brightness(1.18);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.contact-popup-call-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.contact-popup-wa-btn {
+  color: #ffffff;
+  background: linear-gradient(160deg, #25d366 0%, #128c7e 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 6px 18px rgba(37, 211, 102, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.contact-popup-wa-btn:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    0 8px 22px rgba(37, 211, 102, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.contact-popup-wa-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.contact-popup-call-btn:focus-visible,
+.contact-popup-wa-btn:focus-visible {
+  outline: 2px solid rgba(201, 162, 39, 0.7);
+  outline-offset: 3px;
+}
+
+.contact-popup-btn-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 380px) {
+  .contact-popup-shell {
+    width: min(100%, 20rem);
+    padding: 1.35rem 1rem 1.15rem;
+  }
+
+  .contact-popup-title {
+    font-size: 1.2rem;
+  }
+
+  .contact-popup-urdu {
+    font-size: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-popup-close {
+    transition: none;
+  }
+
+  .contact-popup-call-btn,
+  .contact-popup-wa-btn {
+    transition: none;
   }
 }

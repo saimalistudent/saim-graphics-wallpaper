@@ -19,13 +19,12 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { Catalog } from "@/lib/types";
+import { Catalog, ContactSettings } from "@/lib/types";
+import { getDriveDownloadUrl } from "@/lib/drive";
 import {
-  buildWhatsAppUrl,
-  getDriveDownloadUrl,
-  getWhatsAppNumber,
   getWhatsAppScreenshotMessage,
-} from "@/lib/drive";
+  toWhatsAppHref,
+} from "@/lib/contact";
 import {
   createSupabaseBrowserClient,
   isSupabaseConfigured,
@@ -43,6 +42,7 @@ import { readPrefetchedPdf } from "@/lib/pdf-prefetch";
 
 type PdfViewerProps = {
   catalog: Catalog;
+  contact: ContactSettings;
 };
 
 const MIN_ZOOM = 1;
@@ -60,6 +60,37 @@ const PDF_LOAD_STAGES = [
 
 /** Same-session reopen without touching IndexedDB */
 const memoryPdfCache = new Map<string, ArrayBuffer>();
+
+/** Tab-local set of catalog ids already logged as a PDF view (dedupe) */
+const loggedPdfViewsInTab = new Set<string>();
+
+function pdfViewSessionKey(catalogId: string) {
+  return `saim_pdfview_logged_v1_${catalogId}`;
+}
+
+function hasPdfViewBeenLogged(catalogId: string): boolean {
+  if (loggedPdfViewsInTab.has(catalogId)) return true;
+  try {
+    return sessionStorage.getItem(pdfViewSessionKey(catalogId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markPdfViewLogged(catalogId: string) {
+  loggedPdfViewsInTab.add(catalogId);
+  try {
+    sessionStorage.setItem(pdfViewSessionKey(catalogId), "1");
+  } catch {
+    // ignore — module-level set still guards this tab
+  }
+}
+
+function isLikelyBot(): boolean {
+  if (typeof navigator === "undefined") return true;
+  const ua = navigator.userAgent || "";
+  return /bot|crawler|spider|preview|prerender|headless|lighthouse/i.test(ua);
+}
 
 function isMobileUa() {
   if (typeof navigator === "undefined") return false;
@@ -329,7 +360,7 @@ function PdfPage({
   );
 }
 
-export function PdfViewer({ catalog }: PdfViewerProps) {
+export function PdfViewer({ catalog, contact }: PdfViewerProps) {
   const router = useRouter();
   const stageRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -354,6 +385,7 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
   const didPinchRef = useRef(false);
   const movedRef = useRef(false);
   const qualityTimer = useRef<number | null>(null);
+  const pdfViewLoggedRef = useRef(false);
 
   const [mounted, setMounted] = useState(false);
   const [baseWidth, setBaseWidth] = useState(360);
@@ -369,11 +401,9 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
   const [largePdf, setLargePdf] = useState(false);
   const [quality, setQuality] = useState(1.3);
 
-  const phoneNumber = getWhatsAppNumber();
   const whatsappMessage = getWhatsAppScreenshotMessage(catalog.title);
-  const whatsappUrl = phoneNumber
-    ? buildWhatsAppUrl(phoneNumber, whatsappMessage)
-    : null;
+  const whatsappHref = toWhatsAppHref(contact.whatsapp_phone, whatsappMessage);
+  const whatsappUrl = whatsappHref.length > 0 ? whatsappHref : null;
   const downloadUrl = catalog.pdf_url?.trim()
     ? catalog.pdf_url.trim()
     : getDriveDownloadUrl(catalog.drive_file_id);
@@ -554,6 +584,15 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
+    if (pdfViewLoggedRef.current) return;
+    if (isLikelyBot()) return;
+    if (hasPdfViewBeenLogged(catalog.id)) {
+      pdfViewLoggedRef.current = true;
+      return;
+    }
+    pdfViewLoggedRef.current = true;
+    markPdfViewLogged(catalog.id);
+
     async function logPdfView() {
       try {
         const supabase = createSupabaseBrowserClient();
@@ -1125,8 +1164,12 @@ export function PdfViewer({ catalog }: PdfViewerProps) {
             {catalog.title}
           </h1>
         </div>
-        <p className="pdf-viewer-tip sm:hidden">
-          Screenshot your favorite design and send it via WhatsApp below
+        <p
+          className="pdf-viewer-tip sm:hidden font-urdu"
+          dir="rtl"
+          lang="ur"
+        >
+          اپنی پسندیدہ ڈیزائن کا اسکرین شاٹ لیں اور نیچے WhatsApp بٹن دبا کر ہمیں بھیج دیں
         </p>
       </div>
 

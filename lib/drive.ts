@@ -90,18 +90,3 @@ export function extractDriveFileId(input: string): string {
   return trimmed;
 }
 
-export function buildWhatsAppUrl(
-  phoneNumber: string,
-  message: string
-): string {
-  const cleaned = phoneNumber.replace(/\D/g, "");
-  return `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`;
-}
-
-export function getWhatsAppNumber(): string {
-  return process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim() ?? "";
-}
-
-export function getWhatsAppScreenshotMessage(catalogTitle: string): string {
-  return `Hi, I like a design from ${catalogTitle}, sending screenshot`;
-}

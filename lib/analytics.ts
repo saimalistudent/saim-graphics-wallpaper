@@ -11,18 +11,23 @@ function localDayKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function groupVisitsByDay(
-  visits: { timestamp: string }[],
-  days: number
-): { date: string; count: number }[] {
-  const counts = new Map<string, number>();
-
+function emptyDaySeries(days: number): { date: string; count: number }[] {
+  const out: { date: string; count: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() - i);
-    counts.set(localDayKey(d), 0);
+    out.push({ date: localDayKey(d), count: 0 });
   }
+  return out;
+}
+
+function groupVisitsByDay(
+  visits: { timestamp: string }[],
+  days: number
+): { date: string; count: number }[] {
+  const series = emptyDaySeries(days);
+  const counts = new Map(series.map((s) => [s.date, 0]));
 
   for (const visit of visits) {
     const date = localDayKey(new Date(visit.timestamp));
@@ -31,7 +36,7 @@ function groupVisitsByDay(
     }
   }
 
-  return Array.from(counts.entries()).map(([date, count]) => ({ date, count }));
+  return series.map((s) => ({ date: s.date, count: counts.get(s.date) ?? 0 }));
 }
 
 export async function getDashboardStats(days = 30): Promise<DashboardStats> {
@@ -40,29 +45,71 @@ export async function getDashboardStats(days = 30): Promise<DashboardStats> {
       totalVisits: 0,
       totalPdfOpens: 0,
       mostViewed: [],
-      visitsByDay: [],
+      visitsByDay: emptyDaySeries(days),
     };
   }
 
   try {
     const supabase = createSupabaseAdminClient();
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
 
-    const [visitsRes, pdfViewsRes, catalogsRes] = await Promise.all([
-      supabase.from("page_visits").select("timestamp"),
-      supabase.from("pdf_views").select("catalog_id, timestamp"),
+    const [
+      visitsCountRes,
+      pdfCountRes,
+      byDayRpc,
+      pdfCountsRpc,
+      catalogsRes,
+    ] = await Promise.all([
+      supabase.from("page_visits").select("*", { count: "exact", head: true }),
+      supabase.from("pdf_views").select("*", { count: "exact", head: true }),
+      supabase.rpc("dashboard_visit_counts_by_day", { p_days: days }),
+      supabase.rpc("dashboard_pdf_view_counts"),
       supabase.from("catalogs").select("*"),
     ]);
 
-    const visits = visitsRes.data ?? [];
-    const pdfViews = pdfViewsRes.data ?? [];
     const catalogs = catalogsRes.data ?? [];
-
     const viewCounts = new Map<string, number>();
-    for (const view of pdfViews) {
-      viewCounts.set(
-        view.catalog_id,
-        (viewCounts.get(view.catalog_id) ?? 0) + 1
+
+    if (!pdfCountsRpc.error && Array.isArray(pdfCountsRpc.data)) {
+      for (const row of pdfCountsRpc.data as {
+        catalog_id: string;
+        view_count: number | string;
+      }[]) {
+        viewCounts.set(row.catalog_id, Number(row.view_count) || 0);
+      }
+    } else {
+      // Fallback before 008 migration — may undercount past PostgREST row cap
+      const pdfViewsRes = await supabase
+        .from("pdf_views")
+        .select("catalog_id");
+      for (const view of pdfViewsRes.data ?? []) {
+        if (!view.catalog_id) continue;
+        viewCounts.set(
+          view.catalog_id,
+          (viewCounts.get(view.catalog_id) ?? 0) + 1
+        );
+      }
+    }
+
+    let visitsByDay: { date: string; count: number }[];
+    if (!byDayRpc.error && Array.isArray(byDayRpc.data)) {
+      const map = new Map(
+        (
+          byDayRpc.data as { day: string; visit_count: number | string }[]
+        ).map((r) => [r.day, Number(r.visit_count) || 0])
       );
+      visitsByDay = emptyDaySeries(days).map((s) => ({
+        date: s.date,
+        count: map.get(s.date) ?? 0,
+      }));
+    } else {
+      const visitsRes = await supabase
+        .from("page_visits")
+        .select("timestamp")
+        .gte("timestamp", since.toISOString());
+      visitsByDay = groupVisitsByDay(visitsRes.data ?? [], days);
     }
 
     const mostViewed = catalogs
@@ -70,13 +117,14 @@ export async function getDashboardStats(days = 30): Promise<DashboardStats> {
         ...catalog,
         view_count: viewCounts.get(catalog.id) ?? 0,
       }))
+      .filter((c) => c.view_count > 0)
       .sort((a, b) => b.view_count - a.view_count);
 
     return {
-      totalVisits: visits.length,
-      totalPdfOpens: pdfViews.length,
+      totalVisits: visitsCountRes.count ?? 0,
+      totalPdfOpens: pdfCountRes.count ?? 0,
       mostViewed,
-      visitsByDay: groupVisitsByDay(visits, days),
+      visitsByDay,
     };
   } catch (error) {
     console.error("Dashboard stats failed:", error);
@@ -84,7 +132,7 @@ export async function getDashboardStats(days = 30): Promise<DashboardStats> {
       totalVisits: 0,
       totalPdfOpens: 0,
       mostViewed: [],
-      visitsByDay: [],
+      visitsByDay: emptyDaySeries(days),
     };
   }
 }

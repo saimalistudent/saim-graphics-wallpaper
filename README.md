@@ -27,23 +27,29 @@ npm install
 
 ### 3. Environment variables
 
-Copy `.env.local.example` to `.env.local` and fill in:
+Copy `.env.example` to `.env.local` and fill in:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ADMIN_PASSWORD=
-NEXT_PUBLIC_WHATSAPP_NUMBER=
+NEXT_PUBLIC_SITE_URL=
 ```
 
-### 4. Upload PDFs to Google Drive
+Contact phone numbers are managed in Admin → Contact (not env).
+
+### 4. Supabase migrations
+
+Run SQL files in order from `supabase/migrations/` (001 → 008) in the Supabase SQL Editor. Migration `008_storage_rls_and_stats.sql` locks storage to public-read and adds accurate dashboard aggregates.
+
+### 5. Upload PDFs to Google Drive
 
 1. Upload all PDFs from `F:\Design Wallpaper` to a Google Drive folder
 2. Set each file to **"Anyone with the link can view"**
 3. Copy each file's ID from the share URL
 
-### 5. Add catalogs
+### 6. Add catalogs
 
 Use the admin panel at `/admin/login` to add catalogs, or bulk-seed via `scripts/seed-data.json`:
 
@@ -53,7 +59,7 @@ A pre-filled template for all 44 PDFs from `F:\Design Wallpaper` is at `scripts/
 npm run seed
 ```
 
-### 6. Run locally
+### 7. Run locally
 
 ```bash
 npm run dev
@@ -78,6 +84,10 @@ Visit `http://localhost:3000`
 | `/admin/login` | Admin login |
 | `/admin/dashboard` | Analytics dashboard |
 | `/admin/catalogs` | Catalog CRUD manager |
+| `/admin/categories` | Category manager |
+| `/admin/promo` | Promo popup |
+| `/admin/hero` | Hero slides |
+| `/admin/contact` | Call + WhatsApp settings |
 
 ## Site visuals (hero + promo)
 
