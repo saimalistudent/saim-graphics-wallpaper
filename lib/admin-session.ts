@@ -47,6 +47,17 @@ export async function verifyAdminSessionToken(
   return timingSafeEqual(sig, expected);
 }
 
+/** Constant-time password check for admin login (hashes both sides first). */
+export async function verifyAdminPassword(input: string): Promise<boolean> {
+  const expected = getAdminPassword();
+  if (!expected) return false;
+  const [a, b] = await Promise.all([
+    sha256Hex(input),
+    sha256Hex(expected),
+  ]);
+  return timingSafeEqual(a, b);
+}
+
 export function adminSessionCookieOptions(maxAgeSeconds?: number) {
   const secure = process.env.NODE_ENV === "production";
   return {

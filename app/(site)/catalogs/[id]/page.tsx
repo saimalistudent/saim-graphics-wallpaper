@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCatalogById } from "@/lib/catalogs";
+import { getContactSettings } from "@/lib/contact";
 import { PdfViewer } from "@/components/PdfViewer";
 
 type Props = {
@@ -18,7 +19,10 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function CatalogViewerPage({ params }: Props) {
   const { id } = await params;
-  const catalog = await getCatalogById(id);
+  const [catalog, contact] = await Promise.all([
+    getCatalogById(id),
+    getContactSettings(),
+  ]);
 
   if (!catalog) {
     notFound();
@@ -26,8 +30,8 @@ export default async function CatalogViewerPage({ params }: Props) {
 
   return (
     <section className="pdf-page-section">
-      <div className="mx-auto max-w-none px-1.5 sm:px-3 lg:px-4 h-full pdf-page-inner">
-        <PdfViewer key={catalog.id} catalog={catalog} />
+      <div className="w-full h-full pdf-page-inner">
+        <PdfViewer key={catalog.id} catalog={catalog} contact={contact} />
       </div>
     </section>
   );

@@ -4,6 +4,7 @@ import {
   adminSessionCookieOptions,
   createAdminSessionToken,
   getAdminPassword,
+  verifyAdminPassword,
 } from "@/lib/admin-session";
 
 export async function POST(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (password !== adminPassword) {
+  if (!(await verifyAdminPassword(password))) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
 

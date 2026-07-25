@@ -13,6 +13,7 @@ const adminLinks = [
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/promo", label: "Promo" },
   { href: "/admin/hero", label: "Hero" },
+  { href: "/admin/contact", label: "Contact" },
 ];
 
 export function AdminNav() {

@@ -1,13 +1,14 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Footer } from "@/components/layout/Footer";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ContactFab } from "@/components/ContactFab";
 import { PageVisitTracker } from "@/components/PageVisitTracker";
 import { PageLoader } from "@/components/PageLoader";
 import { PromoPopup } from "@/components/PromoPopup";
 import { getActivePromoPopup, promoImageSrc } from "@/lib/promo-popup";
 import { getHeroSlides } from "@/lib/hero-slides";
 import { getCatalogs } from "@/lib/catalogs";
+import { getContactSettings } from "@/lib/contact";
 import { catalogPreviewSrc } from "@/lib/catalog-preview";
 
 export default async function SiteLayout({
@@ -15,10 +16,11 @@ export default async function SiteLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [promo, slides, catalogs] = await Promise.all([
+  const [promo, slides, catalogs, contact] = await Promise.all([
     getActivePromoPopup(),
     getHeroSlides(),
     getCatalogs(),
+    getContactSettings(),
   ]);
 
   // Splash holds until logo, promo, hero slides, AND all PDF previews decode
@@ -42,7 +44,7 @@ export default async function SiteLayout({
         </div>
         <main className="flex-1">{children}</main>
         <Footer />
-        <WhatsAppButton />
+        <ContactFab settings={contact} />
         {promo && <PromoPopup promo={promo} />}
       </PageLoader>
     </>

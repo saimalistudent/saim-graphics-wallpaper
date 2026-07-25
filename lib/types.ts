@@ -66,3 +66,15 @@ export type HeroSlide = {
   enabled: boolean;
   updated_at: string;
 };
+
+export type ContactSettings = {
+  id: string;
+  enabled: boolean;
+  call_intro_ur: string;
+  call_button_label: string;
+  call_phone: string;
+  whatsapp_intro_ur: string;
+  whatsapp_button_label: string;
+  whatsapp_phone: string;
+  updated_at: string;
+};
