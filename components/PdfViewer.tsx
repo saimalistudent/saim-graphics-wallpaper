@@ -59,6 +59,14 @@ const PDF_LOAD_STAGES = [
   "Just a moment",
 ] as const;
 
+function formatPdfMb(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0";
+  const mb = bytes / (1024 * 1024);
+  if (mb < 0.1) return "0.1";
+  if (mb < 10) return mb.toFixed(1);
+  return String(Math.round(mb));
+}
+
 /** Same-session reopen without touching IndexedDB */
 const memoryPdfCache = new Map<string, ArrayBuffer>();
 
@@ -398,6 +406,7 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
   const [loading, setLoading] = useState(true);
   const [loadStage, setLoadStage] = useState(0);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [loadBytes, setLoadBytes] = useState({ loaded: 0, total: 0 });
   const [visibleUntil, setVisibleUntil] = useState(2);
   const [largePdf, setLargePdf] = useState(false);
   const [quality, setQuality] = useState(1.3);
@@ -630,12 +639,51 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
     let tickTimer: number | null = null;
     const openedAt = Date.now();
     const useDriveProxy = pdfApiUrl.startsWith("/api/drive-pdf");
+    const knownTotal =
+      typeof catalog.pdf_bytes === "number" && catalog.pdf_bytes > 0
+        ? catalog.pdf_bytes
+        : 0;
+    let sawByteProgress = false;
+
+    function reportByteProgress(loaded: number, totalHint: number) {
+      if (cancelled) return;
+      sawByteProgress = true;
+      const total =
+        totalHint > 0
+          ? Math.max(totalHint, loaded)
+          : knownTotal > 0
+            ? Math.max(knownTotal, loaded)
+            : loaded;
+      setLoadBytes({ loaded, total });
+      if (total > 0) {
+        const pct = Math.min(
+          99,
+          Math.max(1, Math.round((loaded / total) * 100))
+        );
+        setLoadProgress((p) => Math.max(p, pct));
+        if (loaded / total >= 0.55) setLoadStage((s) => Math.max(s, 2));
+        else if (loaded / total >= 0.2) setLoadStage((s) => Math.max(s, 1));
+      }
+      if (total >= LARGE_PDF_BYTES) setLargePdf(true);
+    }
 
     function finishOpen(opened: PDFDocumentProxy, isLarge: boolean) {
       if (hintTimer) window.clearInterval(hintTimer);
       if (tickTimer) window.clearInterval(tickTimer);
       setLoadProgress(100);
       setLoadStage(PDF_LOAD_STAGES.length - 1);
+      setLoadBytes((prev) => {
+        const total =
+          prev.total > 0
+            ? prev.total
+            : knownTotal > 0
+              ? knownTotal
+              : prev.loaded;
+        return {
+          loaded: total || prev.loaded,
+          total: total || prev.loaded,
+        };
+      });
 
       const reveal = () => {
         if (cancelled) return;
@@ -671,7 +719,12 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
       const pdfjs = await loadPdfJs();
       if (cancelled) return false;
       setLoadStage((s) => Math.max(s, 1));
-      setLoadProgress((p) => Math.max(p, 18));
+      setLoadProgress((p) => Math.max(p, 8));
+      if (knownTotal > 0) {
+        setLoadBytes((prev) =>
+          prev.total > 0 ? prev : { loaded: prev.loaded, total: knownTotal }
+        );
+      }
 
       loadingTask = pdfjs.getDocument({
         url: pdfApiUrl,
@@ -688,11 +741,8 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
       let reportedTotal = 0;
       loadingTask.onProgress = (prog: { loaded: number; total: number }) => {
         if (cancelled) return;
-        // Progress bar is calm/fake — only track size for large-PDF mode
-        if (prog.total > 0) {
-          reportedTotal = prog.total;
-          if (prog.total >= LARGE_PDF_BYTES) setLargePdf(true);
-        }
+        if (prog.total > 0) reportedTotal = prog.total;
+        reportByteProgress(prog.loaded, prog.total || knownTotal);
       };
 
       doc = await withTimeout(loadingTask.promise, isMobileUa() ? 90000 : 120000);
@@ -735,6 +785,7 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
         setLoadStage((s) => Math.max(s, 2));
         setLoadProgress((p) => Math.max(p, 72));
       }
+      reportByteProgress(data.byteLength, data.byteLength);
       loadingTask = pdfjs.getDocument({
         data,
         stopAtErrors: false,
@@ -760,8 +811,9 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
       setNumPages(0);
       setVisibleUntil(3);
       setLoadStage(0);
-      setLoadProgress(6);
-      setLargePdf(false);
+      setLoadProgress(knownTotal > 0 ? 1 : 6);
+      setLoadBytes({ loaded: 0, total: knownTotal });
+      setLargePdf(knownTotal >= LARGE_PDF_BYTES);
       savedScrollTopRef.current = 0;
       scaleRef.current = 1;
       offsetRef.current = { x: 0, y: 0 };
@@ -770,18 +822,17 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
 
       const mobile = isMobileUa();
 
-      // Calm % — only moves forward, not tied to byte download (avoids 90→10 jumps)
+      // Calm stage text
       hintTimer = window.setInterval(() => {
         if (cancelled || doc) return;
         setLoadStage((s) => Math.min(s + 1, PDF_LOAD_STAGES.length - 1));
       }, 2400);
 
+      // Soft % nudge only until real byte progress arrives
       tickTimer = window.setInterval(() => {
-        if (cancelled || doc) return;
+        if (cancelled || doc || sawByteProgress) return;
         setLoadProgress((p) => {
-          if (p >= 94) return p;
-          if (p >= 86) return p + 1;
-          if (p >= 70) return p + 1;
+          if (p >= 40) return p;
           return p + 2;
         });
       }, 700);
@@ -849,13 +900,7 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
         setLoadProgress((p) => Math.max(p, 28));
         const data = await fetchPdfWithProgress(pdfApiUrl, (loaded, total) => {
           if (cancelled) return;
-          if (total >= LARGE_PDF_BYTES) setLargePdf(true);
-          // Do not map bytes → % (keeps bar calm & forward-only)
-          if (total > 0) {
-            const ratio = loaded / total;
-            if (ratio >= 0.55) setLoadStage((s) => Math.max(s, 2));
-            else if (ratio >= 0.2) setLoadStage((s) => Math.max(s, 1));
-          }
+          reportByteProgress(loaded, total || knownTotal);
         });
         if (cancelled) return;
         await openFromData(data, false);
@@ -884,7 +929,7 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
       }
       releasePdfDoc(doc);
     };
-  }, [pdfApiUrl, pdfCacheKey, scheduleQuality]);
+  }, [pdfApiUrl, pdfCacheKey, scheduleQuality, catalog.pdf_bytes]);
 
   // Auto load more pages while scrolling vertically
   useEffect(() => {
@@ -1237,6 +1282,13 @@ export function PdfViewer({ catalog, contact }: PdfViewerProps) {
                 />
               </div>
               <p className="pdf-loading-pct">{loadProgress}%</p>
+              {(loadBytes.total > 0 || loadBytes.loaded > 0) && (
+                <p className="pdf-loading-bytes" aria-live="polite">
+                  {loadBytes.total > 0
+                    ? `${formatPdfMb(loadBytes.loaded)} / ${formatPdfMb(loadBytes.total)} MB`
+                    : `${formatPdfMb(loadBytes.loaded)} MB loaded`}
+                </p>
+              )}
               <p className="pdf-loading-stage" key={loadStage}>
                 {PDF_LOAD_STAGES[Math.min(loadStage, PDF_LOAD_STAGES.length - 1)]}
               </p>

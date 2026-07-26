@@ -418,6 +418,67 @@ h6 {
   z-index: 1;
 }
 
+/* In-flow under hero tagline — outlined monochrome ghosts */
+.hero-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  pointer-events: auto;
+}
+
+.hero-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 0.28rem;
+  border: 1px solid rgba(232, 197, 71, 0.38);
+  background: transparent;
+  color: rgba(250, 246, 240, 0.82);
+  box-shadow: none;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.hero-social-link:hover {
+  color: #e8c547;
+  border-color: rgba(232, 197, 71, 0.85);
+  background: rgba(232, 197, 71, 0.1);
+}
+
+.hero-social-link:focus-visible {
+  outline: 2px solid #c9a227;
+  outline-offset: 2px;
+}
+
+.hero-social-icon {
+  width: 0.88rem;
+  height: 0.88rem;
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .hero-social {
+    gap: 0.4rem;
+    margin-top: 0.45rem;
+  }
+
+  .hero-social-link {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
+  .hero-social-icon {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+}
+
 .hero-marquee {
   position: relative;
   width: 100%;
@@ -1291,10 +1352,8 @@ h6 {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  max-width: 100%;
   padding: 0.28rem 0.55rem 0.3rem 0.4rem;
-  white-space: nowrap;
-  font-size: clamp(0.95rem, 3.6vw, 1.35rem);
+  font-size: clamp(0.82rem, 3.2vw, 1.35rem);
   line-height: 1;
   letter-spacing: 0.06em;
   color: #faf6f0;
@@ -1926,6 +1985,15 @@ html.pdf-viewing .pdf-page-inner {
   font-variant-numeric: tabular-nums;
 }
 
+.pdf-loading-bytes {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(74, 4, 4, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
 .pdf-loading-stage {
   margin: 0.2rem 0 0;
   min-height: 1rem;
@@ -2116,7 +2184,7 @@ html.pdf-viewing .pdf-page-inner {
 }
 
 .how-title {
-  margin-top: 0.2rem;
+  margin: 0.2rem 0 0;
   font-family: var(--font-heading), Georgia, serif;
   font-size: 1.05rem;
   font-weight: 700;
@@ -2124,6 +2192,7 @@ html.pdf-viewing .pdf-page-inner {
 }
 
 .how-hint {
+  margin: 0;
   font-size: 0.8rem;
   color: #6b6b6b;
 }

@@ -16,8 +16,103 @@ export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
     "ہم سے واٹس ایپ پر رابطہ کرنے کے لئے نیچے دیے گئے بٹن پر کلک کریں",
   whatsapp_button_label: "WHATSAPP ONLY",
   whatsapp_phone: "03127290072",
+  facebook_url: "",
+  tiktok_url: "",
+  location_url: "",
   updated_at: new Date(0).toISOString(),
 };
+
+const FACEBOOK_HOSTS = new Set([
+  "facebook.com",
+  "www.facebook.com",
+  "m.facebook.com",
+  "fb.com",
+  "www.fb.com",
+  "fb.me",
+  "www.fb.me",
+]);
+
+const TIKTOK_HOSTS = new Set([
+  "tiktok.com",
+  "www.tiktok.com",
+  "m.tiktok.com",
+  "vm.tiktok.com",
+]);
+
+function hostMatches(
+  hostname: string,
+  allowed: Set<string>
+): boolean {
+  const host = hostname.toLowerCase();
+  if (allowed.has(host)) return true;
+  // Allow regional subdomains like en-gb.facebook.com
+  for (const base of allowed) {
+    if (base.startsWith("www.")) continue;
+    if (host.endsWith(`.${base}`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Normalize + validate a social / location URL for admin save.
+ * Empty/whitespace → "" (icon hidden).
+ * Facebook/TikTok: https on the platform host.
+ * Location: any https URL (Maps short links vary by provider).
+ */
+export function normalizeSocialUrl(
+  input: string | null | undefined,
+  platform: "facebook" | "tiktok" | "location"
+): { ok: true; url: string } | { ok: false; error: string } {
+  const raw = String(input ?? "").trim();
+  if (!raw) return { ok: true, url: "" };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw.includes("://") ? raw : `https://${raw}`);
+  } catch {
+    return {
+      ok: false,
+      error:
+        platform === "facebook"
+          ? "Facebook URL is invalid"
+          : platform === "tiktok"
+            ? "TikTok URL is invalid"
+            : "Location URL is invalid",
+    };
+  }
+
+  if (parsed.protocol !== "https:") {
+    return {
+      ok: false,
+      error:
+        platform === "facebook"
+          ? "Facebook URL must use https://"
+          : platform === "tiktok"
+            ? "TikTok URL must use https://"
+            : "Location URL must use https://",
+    };
+  }
+
+  if (platform === "location") {
+    parsed.hash = "";
+    return { ok: true, url: parsed.toString() };
+  }
+
+  const allowed =
+    platform === "facebook" ? FACEBOOK_HOSTS : TIKTOK_HOSTS;
+  if (!hostMatches(parsed.hostname, allowed)) {
+    return {
+      ok: false,
+      error:
+        platform === "facebook"
+          ? "Facebook URL must be a facebook.com or fb.com link"
+          : "TikTok URL must be a tiktok.com link",
+    };
+  }
+
+  parsed.hash = "";
+  return { ok: true, url: parsed.toString() };
+}
 
 /**
  * Convert any Pakistan phone shape → E.164 digits (no plus, no spaces).

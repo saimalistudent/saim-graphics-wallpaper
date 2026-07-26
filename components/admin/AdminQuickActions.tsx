@@ -30,7 +30,7 @@ const actions = [
   {
     href: "/admin/contact",
     title: "Call & WhatsApp",
-    tip: "Numbers and popup text",
+    tip: "Numbers, popup text, Facebook / TikTok",
     icon: Contact,
   },
   {

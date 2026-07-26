@@ -98,6 +98,21 @@ async function main() {
   add("010", "catalogs.sort_order", await colOk("catalogs", "sort_order"));
   add("010", "catalogs.is_featured", await colOk("catalogs", "is_featured"));
   add("010", "featured_settings", await tableOk("featured_settings"));
+  add(
+    "013",
+    "contact_settings.facebook_url",
+    await colOk("contact_settings", "facebook_url")
+  );
+  add(
+    "013",
+    "contact_settings.tiktok_url",
+    await colOk("contact_settings", "tiktok_url")
+  );
+  add(
+    "014",
+    "contact_settings.location_url",
+    await colOk("contact_settings", "location_url")
+  );
 
   console.log("\nMigration check (live Supabase):\n");
   for (const r of rows) {

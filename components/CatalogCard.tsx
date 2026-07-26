@@ -114,7 +114,7 @@ export function CatalogCard({
                 <img
                   key={thumbSrc}
                   src={thumbSrc}
-                  alt={catalog.title}
+                  alt={`${catalog.title} — 3D panaflex wallpaper catalog`}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="eager"
                   decoding="sync"

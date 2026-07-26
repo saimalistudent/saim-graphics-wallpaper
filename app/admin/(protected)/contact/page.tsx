@@ -11,8 +11,8 @@ export default function AdminContactPage() {
         <div>
           <h1 className="admin-page-title">Contact Settings</h1>
           <p className="admin-page-sub">
-            Call + WhatsApp popup and floating button — shared across the site
-            (including the PDF viewer)
+            Call + WhatsApp popup, floating button, and Facebook / TikTok links
+            next to home “3D Trending Designs”
           </p>
         </div>
       </div>

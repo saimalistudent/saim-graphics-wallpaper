@@ -12,9 +12,10 @@ export function Footer() {
           <Link href="/" className="group inline-flex flex-col items-center gap-3">
             <Image
               src="/logo.webp"
-              alt="SAIM Graphics logo"
+              alt="Saim Graphics logo — 3D panaflex wallpaper Gujranwala"
               width={72}
               height={72}
+              sizes="72px"
               className="object-contain"
             />
             <span className="flex flex-col items-center gap-1">
@@ -41,13 +42,16 @@ export function Footer() {
             Designing · Printing · Pasting
           </p>
 
-          <nav className="flex items-center gap-5 sm:gap-7 pt-1">
+          <nav
+            className="flex items-center gap-5 sm:gap-7 pt-1"
+            aria-label="Footer"
+          >
             <Link href="/" className="footer-link">
-              Home
+              Saim Graphics Home
             </Link>
             <span className="nav-divider" aria-hidden />
             <Link href="/catalogs" className="footer-link">
-              Catalogs
+              Catalog
             </Link>
           </nav>
         </div>

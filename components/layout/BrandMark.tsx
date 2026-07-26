@@ -49,9 +49,10 @@ export function BrandMark({
     <span className={cn("inline-flex items-center gap-2 sm:gap-3 min-w-0 max-w-full", className)}>
       <Image
         src="/logo.webp"
-        alt="SAIM Graphics logo"
+        alt="Saim Graphics logo — 3D panaflex wallpaper Gujranwala"
         width={s.logo}
         height={s.logo}
+        sizes={`${s.logo}px`}
         className={cn("rounded-full object-contain shrink-0", s.logoClass)}
         priority
       />

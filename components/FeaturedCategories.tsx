@@ -11,28 +11,40 @@ type FeaturedCategoriesProps = {
 export function FeaturedCategories({ catalogs }: FeaturedCategoriesProps) {
   if (catalogs.length === 0) {
     return (
-    <section className="pt-3 pb-10 sm:pt-4 sm:pb-14">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-        <FadeUp>
-          <h2 className="trending-title font-heading font-black uppercase">
-            <Flame className="trending-fire" aria-hidden strokeWidth={2.25} />
-            3D Trending Designs
-          </h2>
-          <p className="mt-2 text-sm text-text-secondary">
-            Catalogs will appear here once added via the admin panel.
-          </p>
-        </FadeUp>
-      </div>
-    </section>
+      <section
+        className="pt-3 pb-10 sm:pt-4 sm:pb-14"
+        aria-labelledby="trending-designs-heading"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <FadeUp>
+            <h2
+              id="trending-designs-heading"
+              className="trending-title font-heading font-black uppercase"
+            >
+              <Flame className="trending-fire" aria-hidden strokeWidth={2.25} />
+              3D Trending Designs
+            </h2>
+            <p className="mt-2 text-sm text-text-secondary">
+              Catalogs will appear here once added via the admin panel.
+            </p>
+          </FadeUp>
+        </div>
+      </section>
     );
   }
 
   return (
-    <section className="pt-3 pb-10 sm:pt-4 sm:pb-14">
+    <section
+      className="pt-3 pb-10 sm:pt-4 sm:pb-14"
+      aria-labelledby="trending-designs-heading"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeUp>
           <div className="mb-3 sm:mb-5">
-            <h2 className="trending-title font-heading font-black uppercase">
+            <h2
+              id="trending-designs-heading"
+              className="trending-title font-heading font-black uppercase"
+            >
               <Flame className="trending-fire" aria-hidden strokeWidth={2.25} />
               3D Trending Designs
             </h2>

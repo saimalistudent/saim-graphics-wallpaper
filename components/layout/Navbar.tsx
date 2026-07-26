@@ -7,7 +7,7 @@ import { BrandMark } from "@/components/layout/BrandMark";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/catalogs", label: "Catalogs" },
+  { href: "/catalogs", label: "Catalog" },
 ];
 
 export function Navbar() {

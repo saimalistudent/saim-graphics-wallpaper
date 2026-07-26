@@ -2,7 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { ContactSettings } from "@/lib/types";
-import { DEFAULT_CONTACT_SETTINGS, normalizePkPhone } from "@/lib/contact";
+import {
+  DEFAULT_CONTACT_SETTINGS,
+  normalizePkPhone,
+  normalizeSocialUrl,
+} from "@/lib/contact";
 
 export function ContactManager() {
   const [settings, setSettings] = useState<ContactSettings>(
@@ -25,9 +29,7 @@ export function ContactManager() {
         if (cancelled) return;
         setSettings({ ...DEFAULT_CONTACT_SETTINGS, ...data });
         if (data._warning) {
-          setError(
-            "Run 007_contact_settings.sql in Supabase — showing defaults until table exists."
-          );
+          setError(data._warning);
         }
       } catch (e) {
         if (!cancelled) {
@@ -55,6 +57,13 @@ export function ContactManager() {
     setMessage(null);
     setError(null);
     try {
+      const fb = normalizeSocialUrl(settings.facebook_url, "facebook");
+      if (!fb.ok) throw new Error(fb.error);
+      const tt = normalizeSocialUrl(settings.tiktok_url, "tiktok");
+      if (!tt.ok) throw new Error(tt.error);
+      const loc = normalizeSocialUrl(settings.location_url, "location");
+      if (!loc.ok) throw new Error(loc.error);
+
       const res = await fetch("/api/admin/contact", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -66,6 +75,9 @@ export function ContactManager() {
           whatsapp_intro_ur: settings.whatsapp_intro_ur,
           whatsapp_button_label: settings.whatsapp_button_label,
           whatsapp_phone: settings.whatsapp_phone,
+          facebook_url: fb.url,
+          tiktok_url: tt.url,
+          location_url: loc.url,
         }),
       });
       const data = await res.json();
@@ -74,6 +86,9 @@ export function ContactManager() {
         ...DEFAULT_CONTACT_SETTINGS,
         ...(data as ContactSettings),
       });
+      if (data._warning) {
+        setError(String(data._warning));
+      }
       setMessage("Contact settings saved and live on the website.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -196,6 +211,55 @@ export function ContactManager() {
                   : "—"}
               </span>{" "}
               (also used by PDF viewer)
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-gold/25 bg-[#faf7f2] p-4">
+        <h2 className="admin-card-title">Social links</h2>
+        <p className="text-xs text-text-secondary">
+          Shown as icons under the hero tagline on the home page. Leave blank
+          to hide an icon on the live site.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="admin-label">Facebook URL</label>
+            <input
+              type="url"
+              className="admin-input"
+              value={settings.facebook_url}
+              onChange={(e) => update("facebook_url", e.target.value)}
+              placeholder="https://www.facebook.com/yourpage"
+              inputMode="url"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className="admin-label">TikTok URL</label>
+            <input
+              type="url"
+              className="admin-input"
+              value={settings.tiktok_url}
+              onChange={(e) => update("tiktok_url", e.target.value)}
+              placeholder="https://www.tiktok.com/@yourhandle"
+              inputMode="url"
+              autoComplete="off"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="admin-label">Location URL</label>
+            <input
+              type="url"
+              className="admin-input"
+              value={settings.location_url}
+              onChange={(e) => update("location_url", e.target.value)}
+              placeholder="https://maps.google.com/..."
+              inputMode="url"
+              autoComplete="off"
+            />
+            <p className="mt-1 text-xs text-text-secondary">
+              Google Maps link
             </p>
           </div>
         </div>
