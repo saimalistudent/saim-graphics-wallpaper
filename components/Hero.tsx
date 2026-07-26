@@ -3,19 +3,31 @@
 import Link from "next/link";
 import { Images } from "lucide-react";
 import { FadeUp } from "@/components/FadeUp";
+import { SocialIconLinks } from "@/components/SocialIconLinks";
 import { BRAND_NAME, BRAND_SUBTITLE } from "@/styles/tokens";
 import { HeroSlide } from "@/lib/types";
 
 type Props = {
   slides: HeroSlide[];
+  facebookUrl?: string | null;
+  tiktokUrl?: string | null;
+  locationUrl?: string | null;
 };
 
-export function Hero({ slides }: Props) {
+export function Hero({
+  slides,
+  facebookUrl,
+  tiktokUrl,
+  locationUrl,
+}: Props) {
   const list = slides.length > 0 ? slides : [];
   const track = [...list, ...list];
 
   return (
-    <section className="hero-section relative overflow-hidden text-white">
+    <section
+      className="hero-section relative overflow-hidden text-white"
+      aria-label="Saim Graphics — 3D panaflex wallpaper Gujranwala"
+    >
       <div className="hero-bg" aria-hidden>
         <span className="hero-base" />
         <span className="hero-spotlight" />
@@ -52,24 +64,31 @@ export function Hero({ slides }: Props) {
             <span className="hero-rule-line" />
           </div>
 
-            <h1 className="hero-brand-title font-heading font-bold tracking-wide">
-              {BRAND_SUBTITLE}
-            </h1>
+          <h1 className="hero-brand-title font-heading font-bold tracking-wide">
+            {BRAND_SUBTITLE}
+          </h1>
 
-            <p className="hero-location">
-              {BRAND_NAME} — Gujranwala Pakistan
-            </p>
+          <p className="hero-location">
+            {BRAND_NAME} — Gujranwala Pakistan
+          </p>
 
           <Link href="/catalogs" className="hero-cta gold-btn">
             <span className="hero-cta-icon" aria-hidden>
               <Images className="h-3.5 w-3.5" strokeWidth={2.25} />
             </span>
-              <span>View All Designs</span>
+            <span>View All Designs</span>
           </Link>
 
           <p className="hero-motto">
             Transforming walls into timeless stories of elegance
           </p>
+
+          <SocialIconLinks
+            facebookUrl={facebookUrl}
+            tiktokUrl={tiktokUrl}
+            locationUrl={locationUrl}
+            className="hero-social"
+          />
         </FadeUp>
       </div>
     </section>

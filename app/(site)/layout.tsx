@@ -5,11 +5,13 @@ import { ContactFab } from "@/components/ContactFab";
 import { PageVisitTracker } from "@/components/PageVisitTracker";
 import { PageLoader } from "@/components/PageLoader";
 import { PromoPopup } from "@/components/PromoPopup";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getActivePromoPopup, promoImageSrc } from "@/lib/promo-popup";
 import { getHeroSlides } from "@/lib/hero-slides";
 import { getCatalogs } from "@/lib/catalogs";
 import { getContactSettings } from "@/lib/contact";
 import { catalogPreviewSrc } from "@/lib/catalog-preview";
+import { buildLocalBusinessJsonLd } from "@/lib/seo";
 
 /** Always fresh — admin edits (contact, promo, hero, catalogs) must show immediately */
 export const dynamic = "force-dynamic";
@@ -35,8 +37,17 @@ export default async function SiteLayout({
     ...catalogs.map((c) => catalogPreviewSrc(c)),
   ].filter(Boolean) as string[];
 
+  const localBusinessLd = buildLocalBusinessJsonLd({
+    telephone: contact.call_phone,
+    whatsapp: contact.whatsapp_phone,
+    facebookUrl: contact.facebook_url,
+    tiktokUrl: contact.tiktok_url,
+    locationUrl: contact.location_url,
+  });
+
   return (
     <>
+      <JsonLd data={localBusinessLd} />
       {preloadSrcs.map((src) => (
         <link key={src} rel="preload" as="image" href={src} />
       ))}

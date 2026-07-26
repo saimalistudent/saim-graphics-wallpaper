@@ -88,5 +88,11 @@ export type ContactSettings = {
   whatsapp_intro_ur: string;
   whatsapp_button_label: string;
   whatsapp_phone: string;
+  /** Absolute https URL — empty hides Facebook icon */
+  facebook_url: string;
+  /** Absolute https URL — empty hides TikTok icon */
+  tiktok_url: string;
+  /** Absolute https Maps / location URL — empty hides Location icon */
+  location_url: string;
   updated_at: string;
 };
